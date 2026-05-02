@@ -18,6 +18,22 @@ server = server.replace(
   "app.get('/api/health', (req, res) => res.json({ ok: true, product: 'Promote4.me', version: '2.9.0' }));"
 );
 
+if (!has(server, 'function p4me290PublicMapSchema')) {
+  server = server.replace('migrate();', `migrate();
+function p4me290PublicMapSchema() {
+  const add = (table, column, definition) => {
+    try { run('ALTER TABLE ' + table + ' ADD COLUMN ' + column + ' ' + definition); } catch {}
+  };
+  add('jobs', 'trade', "TEXT NOT NULL DEFAULT ''");
+  add('jobs', 'budget_cents', 'INTEGER NOT NULL DEFAULT 0');
+  add('jobs', 'reward_cents', 'INTEGER NOT NULL DEFAULT 0');
+  add('jobs', 'work_mode', "TEXT NOT NULL DEFAULT 'in_person'");
+  add('jobs', 'visibility', "TEXT NOT NULL DEFAULT 'private'");
+  add('jobs', 'is_public', 'INTEGER NOT NULL DEFAULT 0');
+}
+p4me290PublicMapSchema();`);
+}
+
 if (!has(server, "/api/public/map-jobs")) {
   const publicMapEndpoint = `
 app.get('/api/public/map-jobs', (req, res) => {
