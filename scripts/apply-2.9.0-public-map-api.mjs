@@ -21,7 +21,7 @@ server = server.replace(
 if (!has(server, "/api/public/map-jobs")) {
   const publicMapEndpoint = `
 app.get('/api/public/map-jobs', (req, res) => {
-  const jobs = all("SELECT id,title,type,source,address,lat,lng,trade,budget_cents,work_mode,visibility,status,created_at FROM jobs WHERE COALESCE(is_public,0)=1 OR COALESCE(visibility,'private')='public' ORDER BY created_at DESC LIMIT 300");
+  const jobs = all("SELECT id,title,type,source,address,lat,lng,trade,budget_cents,reward_cents,work_mode,visibility,status,created_at FROM jobs WHERE COALESCE(is_public,0)=1 OR COALESCE(visibility,'private')='public' OR id LIKE 'DEMO-%' OR id LIKE 'PUBLIC-%' ORDER BY created_at DESC LIMIT 300");
   const normalized = jobs.map((job) => ({
     ...job,
     lat: Number(job.lat || 37.0842),
@@ -125,7 +125,7 @@ function PublicWorkMap() {
                 <strong>{job.title || job.id}</strong>
                 <span>{job.trade || job.type || 'Work'} · {job.work_mode === 'online' ? 'Online' : (job.address || 'Local')}</span>
               </div>
-              <small>{job.taken ? 'Taken / in progress' : 'Available now'} · ${(Number(job.reward || job.budget_cents || 0) / 100).toFixed(0)}</small>
+              <small>{job.taken ? 'Taken / in progress' : 'Available now'} · {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(job.reward || job.budget_cents || 0) / 100)}</small>
             </article>
           ))}
           {!visible.length && <article className="public-job-card"><strong>No listings yet</strong><span>Post public work orders to fill this map.</span></article>}
