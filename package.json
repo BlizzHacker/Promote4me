@@ -1,10 +1,11 @@
 {
   "name": "promote4me-2",
   "private": true,
-  "version": "2.2.0",
+  "version": "2.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "prebuild": "node scripts/apply-beta-hardening.mjs && node scripts/apply-2.5-visible-addons.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "api": "node server/index.js",
