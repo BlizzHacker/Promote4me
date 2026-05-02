@@ -1,0 +1,19 @@
+{% comment %}
+  Promote4.me Delivery Monitor Shopify snippet
+  Usage:
+  1. Upload the standalone Promote4.me site somewhere public.
+  2. Replace p4me_host with that public URL.
+  3. Add this snippet to an order status page, customer account page, or theme section.
+{% endcomment %}
+
+{% assign p4me_host = 'https://your-domain.com' %}
+{% assign p4me_tracking_id = order.name | default: checkout.order_name | default: customer.id %}
+
+<section class="promote4me-delivery-tracker" style="margin: 24px 0;">
+  <iframe
+    title="Promote4.me Delivery Tracker"
+    src="{{ p4me_host }}/?tracking={{ p4me_tracking_id | url_encode }}&source=shopify&shop={{ shop.permanent_domain | url_encode }}"
+    style="width: 100%; min-height: 720px; border: 0; border-radius: 18px; overflow: hidden;"
+    loading="lazy"
+  ></iframe>
+</section>
