@@ -1,6 +1,6 @@
 {
   "name": "promote4me-shopify-app",
-  "version": "2.6.0",
+  "version": "2.9.0",
   "type": "module",
   "scripts": {
     "start": "node server.js"

@@ -148,8 +148,15 @@ export default function ProductApp() {
         {active === "workforce" && <WorkforcePanel boot={boot} />}
         {active === "team" && <Team {...props} />}
         {active === "clients" && <Clients {...props} />}
-        {active === "addons" && <AddOns {...props} />}
+        {active === "addons" && <><ApiCredentialCenter291 setNotice={setNotice} /><AddOns {...props} /></>}
         {active === "marketplace" && <MarketplacePanel />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
         {active === "training" && <TrainingPanel user={session.user} />}
         {active === "training" && <TrainingPanel user={session.user} />}
         {active === "training" && <TrainingPanel user={session.user} />}
@@ -178,6 +185,7 @@ function PublicSite({ plans, onAuthed }) {
           <article><strong>Looking for Contractors or Team Members?</strong><span>Post jobs, invite workers, approve proof.</span></article>
           <article><strong>Need to Monitor Success?</strong><span>Track GPS/photo evidence and client approvals.</span></article>
         </div>
+        <PublicWorkMap />
         <div className="hero-actions">
           <button className="primary big" onClick={() => setMode("signup")}>Start free</button>
           <button className="secondary big" onClick={() => setMode("login")}>Log in</button>
@@ -221,6 +229,78 @@ function PublicSite({ plans, onAuthed }) {
         </div>
       </section>
     </main>
+  );
+}
+
+
+function PublicWorkMap() {
+  const [jobs, setJobs] = useState([]);
+  const [counts, setCounts] = useState({ total: 0, available: 0, taken: 0, online: 0, inPerson: 0 });
+  const [userPos, setUserPos] = useState(null);
+  const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    fetch('/api/public/map-jobs')
+      .then((response) => response.json())
+      .then((data) => { setJobs(data.jobs || []); setCounts(data.counts || {}); })
+      .catch(() => {});
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {},
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 600000 }
+      );
+    }
+  }, []);
+
+  const visible = jobs.filter((job) => {
+    if (filter === 'available') return job.available && !job.taken;
+    if (filter === 'taken') return job.taken;
+    if (filter === 'online') return job.work_mode === 'online';
+    if (filter === 'in_person') return (job.work_mode || 'in_person') !== 'online';
+    return true;
+  });
+
+  const center = userPos || visible.find((job) => job.lat && job.lng) || { lat: 37.0842, lng: -94.5133 };
+  const mapUrl = 'https://www.openstreetmap.org/export/embed.html?bbox=' +
+    (Number(center.lng) - 0.08) + '%2C' + (Number(center.lat) - 0.08) + '%2C' +
+    (Number(center.lng) + 0.08) + '%2C' + (Number(center.lat) + 0.08) +
+    '&layer=mapnik&marker=' + center.lat + '%2C' + center.lng;
+
+  return (
+    <section className="public-map-section">
+      <div className="public-map-copy">
+        <span className="eyebrow">Live Work Map · 2.9 beta</span>
+        <h2>Work near you, proof-ready.</h2>
+        <p>Browse open jobs, see what has already been taken, apply for local field work, or post contractor/team jobs that require verified proof.</p>
+        <div className="map-stats">
+          <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>All <strong>{counts.total || 0}</strong></button>
+          <button className={filter === 'available' ? 'active' : ''} onClick={() => setFilter('available')}>Available <strong>{counts.available || 0}</strong></button>
+          <button className={filter === 'taken' ? 'active' : ''} onClick={() => setFilter('taken')}>Taken <strong>{counts.taken || 0}</strong></button>
+          <button className={filter === 'in_person' ? 'active' : ''} onClick={() => setFilter('in_person')}>In-person <strong>{counts.inPerson || 0}</strong></button>
+          <button className={filter === 'online' ? 'active' : ''} onClick={() => setFilter('online')}>Online <strong>{counts.online || 0}</strong></button>
+        </div>
+      </div>
+      <div className="public-map-grid">
+        <div className="public-map-frame">
+          <iframe title="Promote4.me public work map" src={mapUrl} />
+          <div className="map-legend"><span className="dot open"></span> Available <span className="dot taken"></span> Taken <span className="dot online"></span> Online</div>
+        </div>
+        <div className="public-job-feed">
+          {visible.slice(0, 8).map((job) => (
+            <article className={'public-job-card ' + (job.taken ? 'taken' : 'open')} key={job.id}>
+              <div>
+                <strong>{job.title || job.id}</strong>
+                <span>{job.trade || job.type || 'Work'} · {job.work_mode === 'online' ? 'Online' : (job.address || 'Local')}</span>
+              </div>
+              <small>{job.taken ? 'Taken / in progress' : 'Available now'} · {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(job.reward || job.budget_cents || 0) / 100)}</small>
+            </article>
+          ))}
+          {!visible.length && <article className="public-job-card"><strong>No listings yet</strong><span>Post public work orders to fill this map.</span></article>}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -698,6 +778,104 @@ function Clients({ boot, reload, setNotice }) {
 }
 
 function MarketplacePanel() { const [jobs,setJobs]=useState([]); useEffect(()=>{fetch('/api/public/work-listings').then(r=>r.json()).then(d=>setJobs(d.jobs||[])).catch(()=>{})},[]); return <div className="content-grid"><section className="panel wide"><h3>Public Work Listings</h3><p className="hint">Angi / Field Nation style work board focused on proof-of-work for technicians, plumbers, delivery drivers, flyer teams, and contractors.</p><div className="card-grid">{jobs.length?jobs.map(j=><article className="client-card" key={j.id}><strong>{j.title}</strong><p>{j.trade||j.type} · {j.address}</p><small>{j.worker_classification} · Budget {Number(j.budget_cents||0)/100}</small><button className="primary">Apply</button></article>):<article className="client-card"><strong>No public listings yet</strong><p>Create a job and mark it public to test the marketplace.</p></article>}</div></section></div>; }
+
+function ApiCredentialCenter291({ setNotice }) {
+  const [keys, setKeys] = useState([]);
+  const [label, setLabel] = useState("WooCommerce Store");
+  const [newKey, setNewKey] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    try {
+      const data = await api("/api/external-keys");
+      setKeys(data.keys || []);
+    } catch (error) {
+      setNotice(error.message);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function createKey() {
+    setBusy(true);
+    try {
+      const data = await api("/api/external-keys", {
+        method: "POST",
+        body: JSON.stringify({ label }),
+      });
+      setNewKey(data.apiKey);
+      setNotice("External API key created. Copy it into WordPress now.");
+      load();
+    } catch (error) {
+      setNotice(error.message);
+    }
+    setBusy(false);
+  }
+
+  async function testKey() {
+    if (!newKey) return setNotice("Create a key first.");
+
+    const response = await fetch("/api/external/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-P4ME-Key": newKey },
+      body: JSON.stringify({
+        source: "Promote4.me API Credential Center",
+        type: "Package Delivery",
+        title: "API Credential Center Test Order",
+        order_number: "P4ME-API-TEST",
+        customer_name: "API Test Customer",
+        address: "302 E 4th St, Joplin, MO",
+        status: "Assigned",
+        instructions: "This proves the External API Key works.",
+      }),
+    });
+
+    const data = await response.json();
+    setNotice(response.ok ? "API test created Work Order: " + data.job.id : (data.error || "API test failed."));
+  }
+
+  async function revoke(id) {
+    if (!confirm("Revoke this API key?")) return;
+    await api("/api/external-keys/" + id, { method: "DELETE" });
+    setNotice("API key revoked.");
+    load();
+  }
+
+  return (
+    <section className="panel wide api-key-center">
+      <h3><KeyRound /> API Credential Center</h3>
+      <p className="hint">Create the External API Key for WordPress/WooCommerce, Shopify, delivery services, or custom apps.</p>
+
+      <div className="api-key-actions">
+        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Key label" />
+        <button className="primary" disabled={busy} onClick={createKey}>{busy ? "Creating..." : "Create External API Key"}</button>
+      </div>
+
+      {newKey && (
+        <div className="secret-box">
+          <strong>Copy this into WordPress Settings → Promote4.me → External API Key:</strong>
+          <code>{newKey}</code>
+          <div className="button-row">
+            <button className="secondary" onClick={() => navigator.clipboard?.writeText(newKey)}>Copy key</button>
+            <button className="primary" onClick={testKey}>Test key now</button>
+          </div>
+        </div>
+      )}
+
+      <div className="key-list">
+        {keys.map((key) => (
+          <article key={key.id}>
+            <strong>{key.label}</strong>
+            <span>{key.status} · created {new Date(key.created_at).toLocaleString()} · last used {key.last_used_at ? new Date(key.last_used_at).toLocaleString() : "never"}</span>
+            {key.status !== "revoked" && <button className="secondary danger" onClick={() => revoke(key.id)}>Revoke</button>}
+          </article>
+        ))}
+        {!keys.length && <article><strong>No API keys yet</strong><span>Create one for your WordPress plugin.</span></article>}
+      </div>
+    </section>
+  );
+}
+
 function AddOns({ boot, plans, setNotice }) {
   const sources = boot.deliveryServices?.length ? boot.deliveryServices : deliveryServices;
   const providers = plans.providers?.length ? plans.providers : paymentProviders;
@@ -710,11 +888,11 @@ function AddOns({ boot, plans, setNotice }) {
   return (
     <div className="content-grid">
       <section className="panel wide">
-        <h3>Installable add-ons & delivery networks</h3>
+        <h3>Installable add-ons & delivery networks</h3><div className="download-grid"><a className="download-card" href="/downloads/promote4me-woocommerce.zip" download><strong>Download WordPress/WooCommerce Plugin ZIP</strong><span>promote4me-woocommerce.zip</span></a><a className="download-card" href="/downloads/promote4me-shopify-addon.html" download><strong>Download Shopify Beta Add-on</strong><span>promote4me-shopify-addon.html</span></a><a className="download-card" href="/downloads/README-addons.html"><strong>Interactive Interactive Interactive Setup Guide</strong><span>README-addons.html</span></a></div>
     <div className="api-center">
       <strong>API Credential Center</strong>
       <p>Paste provider API keys in Settings/Integrations, then run Test to create a proof-ready job. Delivery providers, Shopify, WooCommerce, online work, and custom courier profiles are supported.</p>
-    </div><div className="download-grid"><a className="download-card" href="/downloads/promote4me-woocommerce.php" download><strong>Download WordPress/WooCommerce Plugin</strong><span>promote4me-woocommerce.php</span></a><a className="download-card" href="/downloads/promote4me-shopify-addon.html" download><strong>Download Shopify Beta Add-on</strong><span>promote4me-shopify-addon.html</span></a><a className="download-card" href="/downloads/README-addons.html" download><strong>Interactive Interactive Setup Guide</strong><span>README-addons.html</span></a></div>
+    </div><div className="download-grid"><a className="download-card" href="/downloads/promote4me-woocommerce.zip" download><strong>Download WordPress/WooCommerce Plugin ZIP</strong><span>promote4me-woocommerce.zip</span></a><a className="download-card" href="/downloads/promote4me-shopify-addon.html" download><strong>Download Shopify Beta Add-on</strong><span>promote4me-shopify-addon.html</span></a><a className="download-card" href="/downloads/README-addons.html" download><strong>Interactive Interactive Interactive Interactive Interactive Interactive Interactive Interactive Interactive Setup Guide</strong><span>README-addons.html</span></a></div>
         <div className="integration-grid">
           <Integration icon={ShoppingBag} title="Shopify stores/restaurants" text="Create Promote4.me proof/delivery jobs from Shopify orders, restaurants, retail, and local store fulfillment." />
           <Integration icon={Store} title="WooCommerce" text="WordPress/WooCommerce order import, customer tracking links, and proof history." />
@@ -785,7 +963,7 @@ function SettingsPanel({ boot, reload, setNotice }) {
   return (
     <div className="content-grid">
       <section className="panel form-panel">
-        <h3><Settings /> Company settings</h3>{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}
+        <h3><Settings /> Company settings</h3>{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}
         <form className="stack-form" onSubmit={save}>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <select value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })}>{["free", "starter", "pro", "agency", "super"].map((plan) => <option key={plan}>{plan}</option>)}</select>
