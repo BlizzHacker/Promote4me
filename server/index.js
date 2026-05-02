@@ -4,10 +4,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { nanoid } from 'nanoid';
-import { migrate, db, row, all, run, now, UPLOAD_DIR } from './db.js';
+import { migrate, row, all, run, now, UPLOAD_DIR } from './db.js';
 import { verifyPassword, signUser, requireAuth, requireAdmin, getCurrentUser, publicId } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -145,8 +144,12 @@ app.post('/api/jobs/:id/evidence', requireAuth, upload.single('photo'), (req, re
   res.json({ evidence: row('SELECT * FROM evidence WHERE id = ?', [id]), job: hydrateJob(row('SELECT * FROM jobs WHERE id = ?', [job.id])) });
 });
 
-app.post('/api/webhooks/shopify/order', express.raw({ type: '*/*' }), (req, res) => res.json({ ok: true, note: 'Configure Shopify app proxy/webhook secret in integrations. Endpoint reserved for Shopify order creation.' }));
+app.post('/api/webhooks/shopify/order', (req, res) => res.json({ ok: true, note: 'Configure Shopify app proxy/webhook secret in integrations. Endpoint reserved for Shopify order creation.' }));
 app.post('/api/webhooks/woocommerce/order', (req, res) => res.json({ ok: true, note: 'WooCommerce plugin can POST orders here after API key setup.' }));
 
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '..', 'dist', 'index.html')));
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+});
+
 app.listen(PORT, '0.0.0.0', () => console.log(`Promote4.me API running on ${PORT}`));
