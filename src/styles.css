@@ -399,3 +399,30 @@ th { color: #9ad8ff; font-size: 13px; text-transform: uppercase; letter-spacing:
   .evidence-card img, .photo-placeholder { width:100% !important; height:220px !important; }
   .checkout-row { grid-template-columns:1fr !important; }
 }
+
+/* SELLABLE PRODUCT UI PATCH */
+.full-width { width: 100%; justify-content: center; }
+.tag-grid { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+.service-tag { padding:10px 13px; border-radius:999px; background:rgba(56,189,248,.14); border:1px solid rgba(56,189,248,.28); color:#dff6ff; font-weight:800; }
+.provider-buttons { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+.multi-checkout { grid-template-columns: 1fr auto 2fr !important; }
+.import-box { display:grid; gap:10px; margin:12px 0; padding:14px; border-radius:18px; background:rgba(125,211,252,.08); border:1px solid rgba(125,211,252,.14); }
+.file-chip { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); color:#d7e6f7; overflow:hidden; }
+.file-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-chip button { border:0; background:rgba(255,255,255,.08); color:#fff; border-radius:10px; padding:8px; }
+.upload-panel { position:sticky; top:20px; align-self:start; }
+.upload-panel .upload-box { min-height:72px; }
+@media (max-width: 900px) {
+  .workspace { padding:12px; }
+  .content-grid, .mobile-stack { grid-template-columns:1fr !important; }
+  .upload-panel { position:static; }
+  .panel { padding:16px; border-radius:18px; }
+  .provider-buttons { justify-content:flex-start; }
+  .multi-checkout { grid-template-columns:1fr !important; }
+  .button-row { width:100%; flex-wrap:wrap; }
+  .button-row button { flex:1; justify-content:center; }
+  .upload-box { width:100%; min-height:82px; }
+  input, textarea, select { font-size:16px; }
+  .evidence-card { grid-template-columns:1fr !important; }
+  .evidence-card img, .photo-placeholder { width:100% !important; height:220px !important; }
+}
