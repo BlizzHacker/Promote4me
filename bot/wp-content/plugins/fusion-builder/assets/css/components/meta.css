@@ -1,0 +1,16 @@
+.fusion-body .fusion-meta-tb {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  line-height: normal;
+  padding: 5px 0;
+  border-top: 1px solid #e7e6e6;
+  border-bottom: 1px solid #e7e6e6;
+}
+.fusion-body .fusion-meta-tb .fusion-meta-tb-sep {
+  padding: 0 5px;
+}
+.fusion-body .fusion-meta-tb .fusion-meta-tb-sep:last-child {
+  display: none;
+}

@@ -1,0 +1,19 @@
+### Need to run `a2enmod rewrite` during Docker build for Docker container
+### Need to config Apache `httpd.conf` file for local URL rewrite (see README)
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^([^\.]+)$ $1.php [NC,L]
+
+### Default WordPress rewrite rules below
+### more info - https://www.hostgator.com/help/article/default-files-htaccess-and-php-ini
+
+## BEGIN WordPress
+
+# RewriteEngine On
+# RewriteBase /
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteRule . /index.php [L]
+
+## END WordPress

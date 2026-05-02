@@ -1,0 +1,5 @@
+## DirectoryIndex index.html index.php default.php
+
+RewriteEngine on
+
+RewriteRule ^$ index.html [L]

@@ -1,0 +1,214 @@
+html
+{
+	font-family: 'Open Sans', sans-serif;
+
+	margin: 0px;
+	padding: 0px;
+
+	$p4Gray : #343838;
+	$p4LtGray : #DFDFDF;
+
+	body
+	{
+		margin: 0px;
+		padding: 0px;
+
+		h1,h2,h3,h4,h5,h6
+		{
+			margin: 0px;
+		}
+
+		h1
+		{
+			font-size: 20px;
+		}
+
+		h2
+		{
+			font-size: 16px;
+		}
+
+		h3
+		{
+			font-size: 14px;
+		}
+
+		.init-hidden
+		{
+			display: none;
+		}
+
+		.text-center
+		{
+			text-align: center;
+		}
+		
+		#login_container
+		{
+			background-color: rgba(255,255,255,.7);
+			padding: 30px;
+			position: absolute;
+			top: 50%;
+			width: 100%;
+			left: 0px;
+		}
+
+		#page_container
+		{
+			overflow: hidden;
+			height: 100%;
+			
+			#page_spillover
+			{
+				#sidebar
+				{
+					width: 150px;
+					display: inline-block;
+					vertical-align: top;
+					background-color: $p4Gray;
+					color: #EEEEEE;
+					padding: 20px;
+					padding-bottom: 5px;
+					height: 100%;
+					margin-left: -90px;
+					border-right: 1px solid black;
+
+					ul
+					{
+						margin: 0px;
+						padding: 0px;
+
+						li
+						{
+							list-style-type: none;
+							margin-bottom: 25px;
+							font-weight: 100;
+							a
+							{
+								color: #EEEEEE;
+							}
+
+							i
+							{
+								position: relative;
+								top: 5px;
+							}
+
+							&.sidebar_spacer
+							{
+								margin-bottom: 0px;
+							}
+
+							&#show_sidebar
+							{
+								font-weight: normal;
+							}
+						}
+					}
+				}
+
+				#page
+				{
+					padding: 10px;
+					padding-right: 0px;
+					display: inline-block;
+					vertical-align: top;
+					margin-left: -4px;
+
+					#page_view
+					{
+						h1
+						{
+							margin: -10px;
+							margin-bottom: 0px;
+							padding: 10px;
+							background-color: #005E80;
+							color: white;
+							font-weight: 100;
+						}
+
+						.scrollable
+						{
+							height: 100%;
+							overflow-y: scroll;
+						}
+
+						#message_sent
+						{
+							margin-top: 10px;
+						}
+
+						#messages
+						{
+							padding-right: 15px;
+							padding-top: 10px;
+
+							.message
+							{
+								margin-bottom: 20px;
+
+								.message_info
+								{
+									padding-bottom: 5px;
+									margin-bottom: 3px;
+									border-bottom: 1px solid $p4LtGray;
+								}
+
+								.message_options
+								{
+									display: none;
+								}
+							}
+						}
+
+						#checkin
+						{
+							padding-top: 40px;
+
+							text-align: center;
+							i
+							{
+								font-size: 180px;
+							}
+						}
+
+						#locations
+						{
+							padding-top: 20px;
+
+							.location
+							{
+								margin-top: 20px;
+								border-bottom: 1px solid $p4LtGray;
+							}
+						}
+						
+						#team
+						{
+							padding-top: 10px;
+
+							.team_member
+							{
+								margin-bottom: 15px;
+
+								.member_info
+								{
+
+									.member_contact
+									{
+
+									}
+								}
+							}
+						}
+
+						#dashboard
+						{
+							padding-top: 10px;
+						}
+					}
+				}
+			}
+		}
+	}
+}

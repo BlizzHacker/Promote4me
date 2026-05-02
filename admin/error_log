@@ -1,0 +1,43 @@
+[26-Aug-2016 04:59:27 UTC] PHP Parse error:  syntax error, unexpected 'if' (T_IF) in /home/nulpointr/public_html/p4admin/_header.php on line 5
+[26-Aug-2016 05:01:48 UTC] PHP Warning:  Illegal string offset 'validation' in /home/nulpointr/public_html/p4admin/_header.php on line 22
+[26-Aug-2016 05:01:48 UTC] PHP Warning:  Illegal string offset 'role' in /home/nulpointr/public_html/p4admin/_header.php on line 23
+[26-Aug-2016 05:02:05 UTC] PHP Warning:  Illegal string offset 'validation' in /home/nulpointr/public_html/p4admin/_header.php on line 22
+[26-Aug-2016 05:02:05 UTC] PHP Warning:  Illegal string offset 'role' in /home/nulpointr/public_html/p4admin/_header.php on line 23
+[26-Aug-2016 05:02:40 UTC] PHP Warning:  Illegal string offset 'validation' in /home/nulpointr/public_html/p4admin/_header.php on line 22
+[26-Aug-2016 05:02:40 UTC] PHP Warning:  Illegal string offset 'role' in /home/nulpointr/public_html/p4admin/_header.php on line 23
+[26-Aug-2016 05:04:06 UTC] PHP Warning:  Illegal string offset 'validation' in /home/nulpointr/public_html/p4admin/_header.php on line 22
+[26-Aug-2016 05:04:06 UTC] PHP Warning:  Illegal string offset 'role' in /home/nulpointr/public_html/p4admin/_header.php on line 23
+[26-Aug-2016 05:04:26 UTC] PHP Warning:  Illegal string offset 'validation' in /home/nulpointr/public_html/p4admin/_header.php on line 22
+[26-Aug-2016 05:04:26 UTC] PHP Warning:  Illegal string offset 'role' in /home/nulpointr/public_html/p4admin/_header.php on line 23
+[26-Aug-2016 05:04:58 UTC] PHP Fatal error:  Cannot use object of type stdClass as array in /home/nulpointr/public_html/p4admin/_header.php on line 22
+[26-Aug-2016 05:08:24 UTC] PHP Parse error:  syntax error, unexpected 'isset' (T_ISSET), expecting '(' in /home/nulpointr/public_html/p4admin/login.php on line 48
+[20-Sep-2020 04:35:04 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 04:35:04 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 04:35:42 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 04:35:42 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 04:37:42 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 04:37:42 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 04:38:22 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 04:38:22 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 04:39:36 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 04:39:36 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 04:39:51 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 04:39:51 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 21:55:57 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 21:55:57 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 21:56:08 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 21:56:08 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 22:11:14 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 22:11:14 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 22:11:18 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 22:11:18 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 22:12:04 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 22:12:04 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 22:12:21 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 22:12:21 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 23:02:35 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 23:02:35 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 23:16:18 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 23:16:18 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21
+[20-Sep-2020 23:16:27 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 20
+[20-Sep-2020 23:16:27 UTC] PHP Notice:  Trying to get property of non-object in /home/sjm4dkufggbj/public_html/admin.promote4.me/_header.php on line 21

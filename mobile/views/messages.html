@@ -1,0 +1,18 @@
+<h1>Messages <i class="fa fa-pencil-square-o pull-right" data-toggle="modal" data-target="#message_modal"></i></h1>
+<div id="message_sent" class="alert alert-success init-hidden">Message Sent!</div>
+<div id="messages" class="container-fluid scrollable">
+	<div class="message row" ng-click="expandMessage($event)" ng-repeat="message in messages">
+		<div class="clearfix message_info">
+		<div class="pull-left message_sender"><h3>{{message.first_name}} {{message.last_name}}</h3></div>
+			<div class="pull-right message_time">11:38 PM</div>
+		</div>
+		<div class="message_excerpt clearfix">{{message.body}}</div>
+		<div class="message_options">
+			<div class="pull-right">
+				<i class="fa fa-mail-reply" ng-click="messageReply(message)"></i>
+				&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+				<i class="fa fa-trash" ng-click="deleteMessage(message,$event)"></i>
+			</div>
+		</div>
+	</div>
+</div>

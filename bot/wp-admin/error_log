@@ -1,0 +1,25 @@
+[12-Oct-2020 17:51:55 UTC] WordPress database error Table 'u727598957_WyRIb.wp_litespeed_img_optm' doesn't exist for query SELECT src,post_id FROM `wp_litespeed_img_optm` WHERE post_id = 6 made by File_Upload_Upgrader->cleanup, wp_delete_attachment, do_action('delete_attachment'), WP_Hook->do_action, WP_Hook->apply_filters, LiteSpeed\Media->delete_attachment, LiteSpeed\Img_Optm->reset_row
+[13-Oct-2020 01:56:45 UTC] [Cloudflare] ERROR: [CLIENT API] Array
+(
+    [type] => request
+    [path] => https://api.cloudflare.com/client/v4/zones/?name=bot.promote4.me
+    [timeout] => 30
+    [method] => GET
+    [headers] => Array
+        (
+            [Content-Type] => application/json
+            [X-Auth-Email] => wadeivy11@gmail.com
+            [X-Auth-Key] => c4f9e9e80d2fde97bb041c70583cd540f7db6
+        )
+
+)
+ 
+[13-Oct-2020 01:56:45 UTC] [Cloudflare] ERROR: [CLIENT API] Array
+(
+    [type] => response
+    [reason] => Forbidden
+    [code] => 403
+)
+ 
+[13-Oct-2020 01:56:45 UTC] [Cloudflare] ERROR: Forbidden 
+[13-Oct-2020 01:56:45 UTC] [Cloudflare] ERROR: Email address or API key invalid. 

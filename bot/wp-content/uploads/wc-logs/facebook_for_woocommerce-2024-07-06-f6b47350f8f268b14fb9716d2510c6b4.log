@@ -1,0 +1,4 @@
+2024-07-06T04:21:29+00:00 NOTICE Unable to detect valid feed configuration: No catalog ID CONTEXT: {"_legacy":true}
+2024-07-06T07:12:56+00:00 NOTICE Unable to detect valid feed configuration: No catalog ID CONTEXT: {"_legacy":true}
+2024-07-06T14:37:24+00:00 NOTICE Starting upgrade to v3.2.0 CONTEXT: {"_legacy":true}
+2024-07-06T14:37:24+00:00 NOTICE Upgrade to v3.2.0 complete CONTEXT: {"_legacy":true}

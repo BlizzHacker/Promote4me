@@ -1,0 +1,14 @@
+<h1>Locations<span class="loader"><i class="fa fa-cog fa-spin"></i></span></h1>
+<div id="locations" class="container-fluid scrollable">
+	<div id="location_filters" class="clearfix">
+		<button class="btn btn-primary col-md-6 col-xs-6 pull-left" id="nearby_locations" ng-click="nearLocations()">Near Me</button>
+		<button class="btn btn-default col-md-6 col-xs-6 pull-right" id="all_locations" ng-click="allLocations()">All Locations</button>
+	</div>
+	<div id="locations_list">
+		<div class="location" ng-repeat="location in locations">
+			<h3>{{location.location_name}}</h3>
+			<p><a href="{{location.location_address}}">{{location.location_address}}</a></p>
+		</div>
+		<h3 ng-show="!locations.length" class="text-center">No Locations <i class="fa fa-frown-o"></i></h3>
+	</div>
+</div>

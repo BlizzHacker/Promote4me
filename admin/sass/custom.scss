@@ -1,0 +1,86 @@
+.row_margin
+{
+	margin-bottom: 20px;
+}
+
+.inventory_box
+{
+	cursor: pointer;
+
+	.inventory_image_container
+	{
+		overflow: hidden;
+		text-align: center;
+		height: 200px;
+		border-radius: 5px;
+	}
+
+	img
+	{
+		max-width: 250px;
+	}
+
+	h5
+	{
+		text-align: center;
+		font-size: 14px;
+	}
+}
+
+#photo_collection{
+	margin: 0px -1.5%;
+
+	.photo_container
+	{
+		width: 200px;
+		height: 200px;
+		overflow: hidden;
+		display: inline-block;
+		margin: 0px 1.5%;
+
+		img
+		{
+			height: 200px;
+			margin-left: -50px;
+		}
+	}
+}
+
+table.dataTable
+{
+	margin-top: 0px !important;
+}
+
+#invite_user_modal
+{
+	.modal-dialog
+	{
+		width: 350px;
+	}
+}
+
+#add_inventory_modal
+{
+	.modal-dialog
+	{
+		width: 300px;
+	}
+}
+
+#update_inventory_modal
+{
+	.modal-dialog
+	{
+		width: 300px;
+	}
+}
+
+#location_map_container
+{
+	height: 300px;
+}
+
+#calendar
+{
+	padding: 15px;
+}

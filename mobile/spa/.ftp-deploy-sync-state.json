@@ -1,0 +1,59 @@
+{
+    "description": "DO NOT DELETE THIS FILE. This file is used to keep track of which files have been synced in the most recent deployment. If you delete this file a resync will need to be done (which can take a while) - read more: https://github.com/SamKirkland/FTP-Deploy-Action",
+    "version": "1.0.0",
+    "generatedTime": 1716344976619,
+    "data": [
+        {
+            "type": "file",
+            "name": ".htaccess",
+            "size": 100,
+            "hash": "97dc8ca4017af22196bc186278763cb6bc930fae9ea7b0935466ae02872a5d6a"
+        },
+        {
+            "type": "folder",
+            "name": "assets"
+        },
+        {
+            "type": "file",
+            "name": "index.html",
+            "size": 705,
+            "hash": "1791a9bd9c377aa139f90e600cdc349f661aad64b755c0f26c23cca4f48c77b1"
+        },
+        {
+            "type": "file",
+            "name": "vite.svg",
+            "size": 1497,
+            "hash": "4a748afd443918bb16591c834c401dae33e87861ab5dbad0811c3a3b4a9214fb"
+        },
+        {
+            "type": "file",
+            "name": "assets/axios-Bkhu-6Ws.js",
+            "size": 29991,
+            "hash": "29472c8786ece52edfbba72f918c0e01213e1862f1b3976fc3e89d72e978a86e"
+        },
+        {
+            "type": "file",
+            "name": "assets/index-BbQk8Mdl.js",
+            "size": 9368,
+            "hash": "85e0b415363a63ca5ae8c8c9d6ac65aa878c230eda1647315b60cfad6a437e77"
+        },
+        {
+            "type": "file",
+            "name": "assets/index-CR15Hj8V.css",
+            "size": 125,
+            "hash": "d2051b3febbcaf8e191bacac7c3e37eb42d23f0af977e7b61c8ac0511e50754f"
+        },
+        {
+            "type": "file",
+            "name": "assets/mui-F9xQZqB4.js",
+            "size": 283261,
+            "hash": "bdabe08ec73b6df574d7371f149674e97e0c23c2aa9ae156a9672480a5f062f4"
+        },
+        {
+            "type": "file",
+            "name": "assets/react-BDpBbo1c.js",
+            "size": 25444,
+            "hash": "184c2a7394927c62b6d02c5b422f6a24b7f2e4422fcf25f98ed363b394098596"
+        }
+    ]
+}

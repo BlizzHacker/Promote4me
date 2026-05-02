@@ -1,0 +1,11 @@
+<h1>The Team<span class="loader"><i class="fa fa-cog fa-spin"></i></span></h1>
+<div id="team" class="scrollable container-fluid">
+	<div class="team_member row" ng-repeat="member in team">
+		<div class="member_info clearfix">
+			<div class="pull-left member_name">{{member.first_name}} {{member.last_name}}</div>
+			<div class="pull-right member_contact">
+				<i class="fa fa-phone"></i>
+			</div>
+		</div>
+	</div>
+</div>

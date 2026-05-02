@@ -1,0 +1,325 @@
+html {
+  font-family: 'Open Sans', sans-serif;
+  margin: 0px;
+  padding: 0px;
+}
+
+.loader
+{
+  display: none;
+  margin-left: 5px;
+}
+
+html
+body {
+  margin: 0px;
+  padding: 0px;
+}
+
+html
+body h1, html
+body h2, html
+body h3, html
+body h4, html
+body h5, html
+body
+h6 {
+  margin: 0px;
+}
+
+html
+body
+h1 {
+  font-size: 20px;
+}
+
+html
+body
+h2 {
+  font-size: 16px;
+}
+
+html
+body
+h3 {
+  font-size: 14px;
+}
+
+html
+body
+.init-hidden {
+  display: none;
+}
+
+html
+body
+.text-center {
+  text-align: center;
+}
+
+html
+body
+#login_container {
+  max-width: 400px;
+  margin: auto;
+}
+
+html
+body
+#page_container {
+  overflow: hidden;
+  height: 100%;
+}
+
+html
+body
+#page_container
+#page_spillover
+#sidebar {
+  width: 150px;
+  display: inline-block;
+  vertical-align: top;
+  background-color: #343838;
+  color: #EEEEEE;
+  padding: 20px;
+  padding-bottom: 5px;
+  height: 100%;
+  margin-left: -90px;
+  border-right: 1px solid black;
+}
+
+html
+body
+#page_container
+#page_spillover
+#sidebar
+ul {
+  margin: 0px;
+  padding: 0px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#sidebar
+ul
+li {
+  list-style-type: none;
+  margin-bottom: 25px;
+  font-weight: 100;
+}
+
+html
+body
+#page_container
+#page_spillover
+#sidebar
+ul
+li
+a {
+  color: #EEEEEE;
+}
+
+html
+body
+#page_container
+#page_spillover
+#sidebar
+ul
+li
+i {
+  position: relative;
+  top: 5px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#sidebar
+ul
+li.sidebar_spacer {
+  margin-bottom: 0px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#sidebar
+ul
+li#show_sidebar {
+  font-weight: normal;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page {
+  padding: 10px;
+  padding-right: 0px;
+  display: inline-block;
+  vertical-align: top;
+  margin-left: -4px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+h1 {
+  margin: -10px;
+  margin-bottom: 0px;
+  padding: 10px;
+  background-color: #005E80;
+  color: white;
+  font-weight: 100;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+.scrollable {
+  height: 100%;
+  overflow-y: scroll;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#message_sent {
+  margin-top: 10px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#messages {
+  padding-right: 15px;
+  padding-top: 10px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#messages
+.message {
+  margin-bottom: 20px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#messages
+.message
+.message_info {
+  padding-bottom: 5px;
+  margin-bottom: 3px;
+  border-bottom: 1px solid #DFDFDF;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#messages
+.message
+.message_options {
+  display: none;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#checkin {
+  padding-top: 40px;
+  text-align: center;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#checkin
+i {
+  font-size: 180px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#locations {
+  padding-top: 20px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#locations
+.location {
+  margin-top: 20px;
+  border-bottom: 1px solid #DFDFDF;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#team {
+  padding-top: 10px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#team
+.team_member {
+  margin-bottom: 15px;
+}
+
+html
+body
+#page_container
+#page_spillover
+#page
+#page_view
+#dashboard {
+  padding-top: 10px;
+}
