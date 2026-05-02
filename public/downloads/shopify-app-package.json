@@ -1,0 +1,11 @@
+{
+  "name": "promote4me-shopify-app",
+  "version": "2.6.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "latest"
+  }
+}

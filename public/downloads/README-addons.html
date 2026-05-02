@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Promote4.me Integration Guide</title>
+  <style>
+    body{font-family:Inter,Arial,sans-serif;background:#07111f;color:#eaf3ff;margin:0;line-height:1.55}
+    .wrap{max-width:1050px;margin:auto;padding:40px}
+    .badge{display:inline-block;background:#12324b;border:1px solid #1e5b82;border-radius:999px;padding:6px 12px;color:#8bdcff}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+    .card{background:#101d2e;border:1px solid #24364d;border-radius:18px;padding:22px;margin:16px 0}
+    a{color:#7dd3fc}
+    pre{background:#06101e;border:1px solid #24364d;border-radius:12px;padding:16px;white-space:pre-wrap;overflow:auto}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Promote4.me 2.6.0</span>
+    <h1>Integration & Beta Testing Guide</h1>
+    <p>Connect Shopify, WooCommerce, DoorDash-style delivery APIs, contractor work, online deliverables, and proof-of-work approval flows.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>WooCommerce</h2>
+        <p>Download the plugin, activate it in WordPress, paste your Promote4.me External API Key, then send a test order.</p>
+        <p><a href="/downloads/promote4me-woocommerce.php">Download WooCommerce Plugin</a></p>
+      </section>
+
+      <section class="card">
+        <h2>Shopify App Starter</h2>
+        <p>Use the starter server as the base for a Shopify Partner app webhook receiver.</p>
+        <p><a href="/downloads/shopify-app-server.js">Download Shopify App Server</a></p>
+        <p><a href="/downloads/shopify-app-package.json">Download Shopify package.json</a></p>
+      </section>
+
+      <section class="card">
+        <h2>Delivery / Field APIs</h2>
+        <p>Credential profiles are planned for DoorDash, Grubhub, Uber Eats, Instacart, Shipt, Roadie, Walmart Spark, Amazon Flex, Shopify, WooCommerce, Online Work, and Custom Courier.</p>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>External Order Endpoint</h2>
+      <pre>POST https://promote4.me/api/external/orders
+Headers:
+  Content-Type: application/json
+  X-P4ME-Key: YOUR_EXTERNAL_API_KEY
+
+{
+  "source": "Shopify",
+  "type": "Package Delivery",
+  "title": "Shopify Local Delivery",
+  "order_number": "1001",
+  "customer_name": "Jane Customer",
+  "address": "302 E 4th St, Joplin, MO",
+  "status": "Assigned",
+  "instructions": "Upload proof before completion."
+}</pre>
+    </section>
+  </div>
+</body>
+</html>

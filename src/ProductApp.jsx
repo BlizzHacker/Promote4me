@@ -14,6 +14,16 @@ const jobTypes = ["Team Promo", "Technician On-Site", "Plumber / Contractor", "F
 const deliveryServices = ["Promote4.me Direct", "Uber Eats", "DoorDash", "Instacart", "Grubhub", "Postmates", "Walmart Spark", "Amazon Flex", "Roadie", "Shipt", "Custom Courier"];
 const paymentProviders = ["stripe", "paypal", "square", "venmo", "cashapp"];
 const fieldRoles = ["Lead Tech", "Dispatcher", "Route Manager", "Technician", "Plumber", "Electrician", "Delivery Driver", "Flyer Team Member", "Promoter", "Contractor", "Customer Service", "Client Viewer"];
+const demoUsernames = ["Test", "TestManager", "TestMember", "TestClient"];
+function isDemoUser(user) { return user?.tenant_id === "tenant-test-demo" || demoUsernames.includes(user?.username); }
+function canSeeTab(user, tab) {
+  const role = user?.role;
+  if (role === "super_admin") return true;
+  if (role === "admin") return !["super_admin"].includes(tab);
+  if (role === "manager") return ["dashboard", "jobs", "review", "map", "team", "clients", "training", "workforce", "marketplace"].includes(tab);
+  if (role === "member") return ["dashboard", "jobs", "review", "map", "training", "marketplace"].includes(tab);
+  return ["dashboard", "jobs", "map", "training", "marketplace"].includes(tab);
+}
 
 async function api(path, options = {}) {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -85,14 +95,17 @@ export default function ProductApp() {
   if (!boot) return <div className="loading-screen"><Sparkles /> Loading Promote4.me...</div>;
 
   const menu = [
-    ["dashboard", session.user?.role === "super_admin" ? "Super Admin" : "Dashboard", LayoutDashboard],
-    ["hierarchy", session.user?.role === "super_admin" ? "Clients > Companies > Teams > Users" : "Companies > Teams > Users", Building2],
-    ["jobs", "Jobs & Orders", ClipboardList],
-    ["review", "Evidence Review", ShieldCheck],
-    ["map", "Proof Map", Map],
-    ["team", "Team", Users],
-    ["clients", "Clients", Building2],
-    ["addons", "Add-ons", Store],
+    ["dashboard", "Overview", LayoutDashboard],
+    ["hierarchy", session.user?.role === "super_admin" ? "Platform" : "Company", Building2],
+    ["jobs", "Work Orders", ClipboardList],
+    ["review", "Approvals", ShieldCheck],
+    ["map", "Map", Map],
+    ["workforce", "People", Users],
+    ["team", "Teams", Users],
+    ["clients", "Locations", Building2],
+    ["addons", "Integrations", Store],
+    ["marketplace", "Marketplace", Map],
+    ["training", "Training", ShieldCheck],
     ["settings", "Settings", Settings],
   ];
 
@@ -107,7 +120,7 @@ export default function ProductApp() {
           <span>{session.user.role} · {boot.tenant?.plan}</span>
         </div>
         <nav>
-          {menu.map(([id, label, Icon]) => (
+          {menu.filter(([id]) => canSeeTab(session.user, id)).map(([id, label, Icon]) => (
             <button key={id} className={active === id ? "active" : ""} onClick={() => setActive(id)}>
               <Icon size={18} /> {label}
             </button>
@@ -132,9 +145,15 @@ export default function ProductApp() {
         {active === "jobs" && <Jobs {...props} />}
         {active === "review" && <EvidenceReview {...props} />}
         {active === "map" && <ProofMap boot={boot} />}
+        {active === "workforce" && <WorkforcePanel boot={boot} />}
         {active === "team" && <Team {...props} />}
         {active === "clients" && <Clients {...props} />}
         {active === "addons" && <AddOns {...props} />}
+        {active === "marketplace" && <MarketplacePanel />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
+        {active === "training" && <TrainingPanel user={session.user} />}
         {active === "settings" && <SettingsPanel {...props} />}
       </main>
     </div>
@@ -152,8 +171,13 @@ function PublicSite({ plans, onAuthed }) {
     <main className="marketing">
       <section className="hero-card marketing-hero">
         <div className="badge"><Sparkles size={18} /> Sellable proof-of-work platform</div>
-        <h1>GPS photo proof for deliveries, contractors, field teams, Shopify, and WooCommerce.</h1>
-        <p>Promote4.me verifies that work happened at the right location with photo uploads, browser GPS, image GPS metadata, audit history, CRM tools, and customer tracking.</p>
+        <h1>Find work, hire contractors, and verify success with proof.</h1>
+        <p>One platform for in-person field work, delivery proof, contractor dispatch, online deliverables, client approvals, and GPS/photo evidence.</p>
+        <div className="intent-grid">
+          <article><strong>Looking for Work?</strong><span>Apply for local or remote 1099 jobs.</span></article>
+          <article><strong>Looking for Contractors or Team Members?</strong><span>Post jobs, invite workers, approve proof.</span></article>
+          <article><strong>Need to Monitor Success?</strong><span>Track GPS/photo evidence and client approvals.</span></article>
+        </div>
         <div className="hero-actions">
           <button className="primary big" onClick={() => setMode("signup")}>Start free</button>
           <button className="secondary big" onClick={() => setMode("login")}>Log in</button>
@@ -508,6 +532,7 @@ function ProofMap({ boot }) {
   );
 }
 
+function WorkforcePanel({ boot }) { const workers=(boot.teamMembers||[]).filter(w=>w.status!=="deleted"); return <div className="content-grid"><section className="panel wide"><h3>Employees + Independent Contractors</h3><p className="hint">Employees can be on Teams. Independent Contractors can be company-approved without a private team and receive API-powered jobs when enabled by admins.</p><div className="card-grid">{workers.map(w=><article className="person-card" key={w.id}><div className="avatar">{w.full_name?.[0]}</div><div><strong>{w.full_name}</strong><p>{w.worker_type||"employee"} · {w.role}</p><small>{w.email} · Company API access: {w.api_access===0?"off":"on"}</small><p>{w.skills_json||w.notes}</p></div></article>)}</div></section><section className="panel"><h3>1099 Contractor System</h3><p>Use Team for employees/private teams. Use Workforce for independent contractors, plumbers, technicians, delivery drivers, and public marketplace workers.</p></section></div>; }
 function Team({ boot, reload, setNotice }) {
   const roles = boot.fieldRoleCatalog?.length ? boot.fieldRoleCatalog : fieldRoles;
   const [editing, setEditing] = useState(null);
@@ -672,6 +697,7 @@ function Clients({ boot, reload, setNotice }) {
   );
 }
 
+function MarketplacePanel() { const [jobs,setJobs]=useState([]); useEffect(()=>{fetch('/api/public/work-listings').then(r=>r.json()).then(d=>setJobs(d.jobs||[])).catch(()=>{})},[]); return <div className="content-grid"><section className="panel wide"><h3>Public Work Listings</h3><p className="hint">Angi / Field Nation style work board focused on proof-of-work for technicians, plumbers, delivery drivers, flyer teams, and contractors.</p><div className="card-grid">{jobs.length?jobs.map(j=><article className="client-card" key={j.id}><strong>{j.title}</strong><p>{j.trade||j.type} · {j.address}</p><small>{j.worker_classification} · Budget {Number(j.budget_cents||0)/100}</small><button className="primary">Apply</button></article>):<article className="client-card"><strong>No public listings yet</strong><p>Create a job and mark it public to test the marketplace.</p></article>}</div></section></div>; }
 function AddOns({ boot, plans, setNotice }) {
   const sources = boot.deliveryServices?.length ? boot.deliveryServices : deliveryServices;
   const providers = plans.providers?.length ? plans.providers : paymentProviders;
@@ -685,6 +711,10 @@ function AddOns({ boot, plans, setNotice }) {
     <div className="content-grid">
       <section className="panel wide">
         <h3>Installable add-ons & delivery networks</h3>
+    <div className="api-center">
+      <strong>API Credential Center</strong>
+      <p>Paste provider API keys in Settings/Integrations, then run Test to create a proof-ready job. Delivery providers, Shopify, WooCommerce, online work, and custom courier profiles are supported.</p>
+    </div><div className="download-grid"><a className="download-card" href="/downloads/promote4me-woocommerce.php" download><strong>Download WordPress/WooCommerce Plugin</strong><span>promote4me-woocommerce.php</span></a><a className="download-card" href="/downloads/promote4me-shopify-addon.html" download><strong>Download Shopify Beta Add-on</strong><span>promote4me-shopify-addon.html</span></a><a className="download-card" href="/downloads/README-addons.html" download><strong>Interactive Interactive Setup Guide</strong><span>README-addons.html</span></a></div>
         <div className="integration-grid">
           <Integration icon={ShoppingBag} title="Shopify stores/restaurants" text="Create Promote4.me proof/delivery jobs from Shopify orders, restaurants, retail, and local store fulfillment." />
           <Integration icon={Store} title="WooCommerce" text="WordPress/WooCommerce order import, customer tracking links, and proof history." />
@@ -723,6 +753,17 @@ function Integration({ icon: Icon, title, text }) {
   return <article className="integration-card"><Icon /><strong>{title}</strong><p>{text}</p></article>;
 }
 
+function TrainingPanel({ user }) {
+  const modules = [
+    ["1", "Create a client/location", "Add a customer, store, restaurant, campus board, residence, or job site."],
+    ["2", "Create or sync work", "Create a job manually or use Add-ons to simulate DoorDash, Uber Eats, Shopify, WooCommerce, Roadie, Spark, Flex, Shipt, or Instacart."],
+    ["3", "Assign the team", "Assign a driver, flyer promoter, technician, route manager, or contractor."],
+    ["4", "Upload proof", "Field members upload a photo from mobile. Promote4.me scores GPS confidence and flags missing GPS."],
+    ["5", "Review and approve", "Managers/admins approve, reject, or request better evidence before payment or client sign-off."],
+  ];
+  return <div className="content-grid"><section className="panel wide"><h3>Interactive Training</h3><p className="hint">Role: {user?.role}. Demo accounts can explore without changing passwords, roles, billing, or API secrets.</p><div className="training-grid">{modules.map(([n,t,d]) => <article key={n}><strong>{n}. {t}</strong><p>{d}</p><label className="check-line"><input type="checkbox"/> Mark complete</label></article>)}</div></section><section className="panel"><h3>Beta checklist</h3><ul className="clean-list"><li>Run one provider demo sync.</li><li>Create a client/location.</li><li>Create one job.</li><li>Upload mobile proof.</li><li>Review GPS confidence.</li></ul></section></div>;
+}
+
 function SettingsPanel({ boot, reload, setNotice }) {
   const [form, setForm] = useState({
     name: boot.tenant.name,
@@ -744,7 +785,7 @@ function SettingsPanel({ boot, reload, setNotice }) {
   return (
     <div className="content-grid">
       <section className="panel form-panel">
-        <h3><Settings /> Company settings</h3>
+        <h3><Settings /> Company settings</h3>{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}{boot.tenant?.id === 'tenant-test-demo' && <div className='warning'>Demo settings are read-only for billing, passwords, API secrets, roles, and owner controls.</div>}
         <form className="stack-form" onSubmit={save}>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <select value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })}>{["free", "starter", "pro", "agency", "super"].map((plan) => <option key={plan}>{plan}</option>)}</select>
