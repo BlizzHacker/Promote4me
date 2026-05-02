@@ -5,11 +5,13 @@ const has = (s, x) => s.includes(x);
 console.log("Applying Promote4.me 2.6.0 recovery patch...");
 
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-pkg.version = "2.6.0";
+// Do not downgrade newer releases. This script is still reused by 2.9+ builds.
+pkg.version = pkg.version && pkg.version !== "2.6.0" ? pkg.version : "2.9.0";
 pkg.scripts.prebuild = [
   "node scripts/apply-beta-hardening.mjs",
   "node scripts/apply-2.5-visible-addons.mjs",
-  "node scripts/apply-2.6.0-recovery.mjs"
+  "node scripts/apply-2.6.0-recovery.mjs",
+  "node scripts/apply-2.9.0-public-map-api.mjs"
 ].join(" && ");
 fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
 
@@ -30,7 +32,7 @@ fs.writeFileSync("public/downloads/README-addons.html", `<!doctype html>
 </head>
 <body>
   <div class="wrap">
-    <span class="badge">Promote4.me 2.6.0</span>
+    <span class="badge">Promote4.me 2.9.0</span>
     <h1>Integration & Beta Testing Guide</h1>
     <p>Connect Shopify, WooCommerce, DoorDash-style delivery APIs, contractor work, online deliverables, and proof-of-work approval flows.</p>
 
@@ -78,7 +80,7 @@ Headers:
 
 fs.writeFileSync("public/downloads/shopify-app-package.json", JSON.stringify({
   name: "promote4me-shopify-app",
-  version: "2.6.0",
+  version: "2.9.0",
   type: "module",
   scripts: { start: "node server.js" },
   dependencies: { express: "latest" }
@@ -194,4 +196,4 @@ if (!has(css, "P4ME 2.6 UI PATCH")) {
 
 fs.writeFileSync("src/styles.css", css);
 
-console.log("Promote4.me 2.6.0 recovery patch applied.");
+console.log("Promote4.me 2.6.0 recovery patch applied without downgrading 2.9.0.");
