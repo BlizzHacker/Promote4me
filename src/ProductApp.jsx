@@ -188,7 +188,7 @@ function PublicSite({ plans, onAuthed }) {
 }
 
 function AuthCard({ action, onAuthed, onBack }) {
-  const [form, setForm] = useState({ companyName: "", fullName: "", email: "", username: action === "login" ? "moveweight" : "", password: "", plan: "free" });
+  const [form, setForm] = useState({ companyName: "", fullName: "", email: "", username: action === "login" ? "Test" : "", password: "", plan: "free" });
   const [error, setError] = useState("");
 
   async function submit(event) {

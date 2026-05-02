@@ -426,3 +426,31 @@ th { color: #9ad8ff; font-size: 13px; text-transform: uppercase; letter-spacing:
   .evidence-card { grid-template-columns:1fr !important; }
   .evidence-card img, .photo-placeholder { width:100% !important; height:220px !important; }
 }
+
+/* PUBLIC DEMO TOUR PATCH */
+.demo-login-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:12px;
+  margin-top:24px;
+}
+.demo-login-grid article {
+  border:1px solid rgba(125,211,252,.22);
+  background:rgba(14,165,233,.10);
+  border-radius:18px;
+  padding:16px;
+}
+.demo-login-grid strong {
+  display:block;
+  color:#fff;
+  margin-bottom:8px;
+}
+.demo-login-grid span {
+  display:block;
+  color:#7dd3fc;
+  font-weight:900;
+  margin-bottom:6px;
+}
+.demo-login-grid small {
+  color:#c7d7ea;
+}
