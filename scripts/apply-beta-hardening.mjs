@@ -71,7 +71,7 @@ app.delete('/api/clients/:id', requireAuth, requireRole('manager'), (req, res) =
   );
 }
 
-// Add demo integration sync endpoint if absent.
+// Add demo integration sync endpoint if absent. Keep every provider reference escaped so this patch script does not evaluate server runtime variables.
 if (!server.includes("app.post('/api/integrations/simulate/:provider'")) {
   server = server.replace(
 "app.post('/api/jobs', requireAuth, requireRole('manager'),",
@@ -83,9 +83,9 @@ if (!server.includes("app.post('/api/integrations/simulate/:provider'")) {
   const member = row('SELECT id FROM team_members WHERE tenant_id=? AND status != ? ORDER BY created_at DESC LIMIT 1', [tid, 'deleted']);
   const client = row('SELECT * FROM clients WHERE tenant_id=? AND COALESCE(status, ?) != ? ORDER BY created_at DESC LIMIT 1', [tid, 'active', 'deleted']);
   const id = \`P4-SYNC-\${Date.now().toString().slice(-6)}\`;
-  const orderNumber = \`${provider.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}-\${Date.now().toString().slice(-5)}\`;
-  run(\`INSERT INTO jobs (id, tenant_id, team_id, client_id, assigned_to, type, title, order_number, source, customer_name, customer_email, customer_phone, address, lat, lng, status, eta, reward_cents, instructions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`, [id, tid, team?.id || null, client?.id || null, member?.id || null, provider.match(/uber|door|grub/i) ? 'Food Delivery' : 'Package Delivery', \`${provider} synced demo order\`, orderNumber, provider, client?.name || 'Demo Customer', client?.email || 'demo-customer@promote4.me', client?.phone || '(555) 600-0000', client?.address || '302 E 4th St, Joplin, MO', client?.lat || 37.0878, client?.lng || -94.5107, 'Assigned', 'Synced just now', 1000, \`Simulated ${provider} API sync. Add live credentials in Integrations to turn this into production sync.\`, now(), now()]);
-  run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tid, id, req.user.id, \`${provider} demo sync created job\`, now()]);
+  const orderNumber = \`\${provider.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}-\${Date.now().toString().slice(-5)}\`;
+  run(\`INSERT INTO jobs (id, tenant_id, team_id, client_id, assigned_to, type, title, order_number, source, customer_name, customer_email, customer_phone, address, lat, lng, status, eta, reward_cents, instructions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`, [id, tid, team?.id || null, client?.id || null, member?.id || null, provider.match(/uber|door|grub/i) ? 'Food Delivery' : 'Package Delivery', \`\${provider} synced demo order\`, orderNumber, provider, client?.name || 'Demo Customer', client?.email || 'demo-customer@promote4.me', client?.phone || '(555) 600-0000', client?.address || '302 E 4th St, Joplin, MO', client?.lat || 37.0878, client?.lng || -94.5107, 'Assigned', 'Synced just now', 1000, \`Simulated \${provider} API sync. Add live credentials in Integrations to turn this into production sync.\`, now(), now()]);
+  run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tid, id, req.user.id, \`\${provider} demo sync created job\`, now()]);
   audit(req, 'integration_demo_sync', { provider, job_id: id });
   res.json({ ok: true, provider, job: hydrateJob(row('SELECT * FROM jobs WHERE id=?', [id])) });
 });
@@ -135,9 +135,9 @@ function canSeeTab(user, tab) {
   const role = user?.role;
   if (role === "super_admin") return true;
   if (role === "admin") return !["super_admin"].includes(tab);
-  if (role === "manager") return ["dashboard", "jobs", "review", "map", "team", "clients", "training"].includes(tab);
-  if (role === "member") return ["dashboard", "jobs", "review", "map", "training"].includes(tab);
-  return ["dashboard", "jobs", "map", "training"].includes(tab);
+  if (role === "manager") return ["dashboard", "jobs", "review", "map", "team", "clients", "training", "workforce", "marketplace"].includes(tab);
+  if (role === "member") return ["dashboard", "jobs", "review", "map", "training", "marketplace"].includes(tab);
+  return ["dashboard", "jobs", "map", "training", "marketplace"].includes(tab);
 }`
   );
 }
@@ -174,12 +174,6 @@ if (!app.includes('function TrainingPanel')) {
 function SettingsPanel({ boot, reload, setNotice }) {`
   );
 }
-
-// Demo UI guardrails.
-app = app.replace(
-"function SettingsPanel({ boot, reload, setNotice }) {",
-"function SettingsPanel({ boot, reload, setNotice }) {"
-);
 
 // Add warning to Settings panel body.
 app = app.replace(
