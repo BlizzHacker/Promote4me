@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "api": "node server/index.js",
     "seed": "node server/seed.js",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "seed:test": "node server/seed-test-demo.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
