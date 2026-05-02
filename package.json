@@ -1,12 +1,15 @@
 {
   "name": "promote4me-2",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "api": "node server/index.js",
+    "seed": "node server/seed.js",
+    "start": "node server/index.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -14,7 +17,16 @@
     "react": "latest",
     "react-dom": "latest",
     "lucide-react": "latest",
-    "exifr": "latest"
+    "exifr": "latest",
+    "better-sqlite3": "latest",
+    "bcryptjs": "latest",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "helmet": "latest",
+    "jsonwebtoken": "latest",
+    "multer": "latest",
+    "nanoid": "latest"
   },
   "devDependencies": {}
 }
