@@ -13,6 +13,11 @@ export const db = new Database(path.join(DATA_DIR, 'promote4me.sqlite'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+function addColumn(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
 export function migrate() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS tenants (
@@ -145,7 +150,64 @@ export function migrate() {
       created_at TEXT NOT NULL,
       UNIQUE(tenant_id, provider, name)
     );
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS email_verification_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS billing_events (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      plan TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'created',
+      checkout_url TEXT DEFAULT '',
+      metadata_json TEXT DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS audit_events (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT,
+      user_id TEXT,
+      event TEXT NOT NULL,
+      ip TEXT DEFAULT '',
+      user_agent TEXT DEFAULT '',
+      metadata_json TEXT DEFAULT '{}',
+      created_at TEXT NOT NULL
+    );
   `);
+
+  addColumn('tenants', 'status', "TEXT NOT NULL DEFAULT 'active'");
+  addColumn('tenants', 'billing_email', "TEXT DEFAULT ''");
+  addColumn('tenants', 'free_jobs_limit', 'INTEGER NOT NULL DEFAULT 25');
+  addColumn('tenants', 'free_users_limit', 'INTEGER NOT NULL DEFAULT 3');
+  addColumn('tenants', 'last_active_at', 'TEXT');
+  addColumn('tenants', 'delete_after_inactive_at', 'TEXT');
+  addColumn('tenants', 'map_provider', "TEXT NOT NULL DEFAULT 'openstreetmap'");
+  addColumn('tenants', 'stripe_customer_id', "TEXT DEFAULT ''");
+  addColumn('tenants', 'paypal_customer_id', "TEXT DEFAULT ''");
+  addColumn('tenants', 'square_customer_id', "TEXT DEFAULT ''");
+  addColumn('users', 'email_verified_at', 'TEXT');
+  addColumn('users', 'last_login_at', 'TEXT');
+  addColumn('users', 'last_active_at', 'TEXT');
+  addColumn('users', 'auth_provider', "TEXT NOT NULL DEFAULT 'password'");
+  addColumn('users', 'external_subject', "TEXT DEFAULT ''");
+  addColumn('teams', 'status', "TEXT NOT NULL DEFAULT 'active'");
 }
 
 export function now() { return new Date().toISOString(); }
