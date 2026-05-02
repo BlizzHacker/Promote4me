@@ -95,3 +95,307 @@ th { color: #9ad8ff; font-size: 13px; text-transform: uppercase; letter-spacing:
   .evidence-card { grid-template-columns: 1fr; }
   .evidence-card img, .photo-placeholder { width: 100%; height: 180px; }
 }
+
+/* PRODUCT APP BUYER UI */
+.loading-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  color: #9ad8ff;
+  background: radial-gradient(circle at top left, rgba(56,189,248,.18), transparent 36%), #07111f;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.marketing {
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.marketing-hero {
+  margin: 0 auto 34px;
+  width: min(1180px, 100%);
+}
+
+.marketing-hero h1 {
+  max-width: 1050px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.big {
+  font-size: 17px;
+  padding: 16px 22px;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 34px;
+}
+
+.feature-grid article,
+.integration-card,
+.price-card,
+.person-card,
+.client-card {
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.055);
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.18);
+}
+
+.feature-grid svg,
+.integration-card svg {
+  color: #7dd3fc;
+  margin-bottom: 10px;
+}
+
+.feature-grid strong,
+.integration-card strong,
+.price-card span,
+.person-card strong,
+.client-card strong {
+  display: block;
+  font-size: 18px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.pricing-section {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.price-card h3 {
+  font-size: 32px;
+  margin: 8px 0;
+}
+
+.price-card ul {
+  color: #c4d5e8;
+  line-height: 1.9;
+  padding-left: 18px;
+}
+
+.floating-card {
+  position: fixed;
+  right: 32px;
+  top: 32px;
+  z-index: 20;
+}
+
+.mini-profile {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(125,211,252,.08);
+  border: 1px solid rgba(125,211,252,.16);
+}
+
+.mini-profile span {
+  color: #9fb5ca;
+  font-size: 13px;
+}
+
+.toast {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(125,211,252,.25);
+  background: rgba(14,165,233,.12);
+  color: #dff6ff;
+}
+
+.toast button {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 22px;
+}
+
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.pipeline article {
+  min-height: 260px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  padding: 14px;
+}
+
+.pipeline article > strong {
+  display: block;
+  margin-bottom: 12px;
+  color: #9ad8ff;
+}
+
+.mini-job {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(0,0,0,.22);
+  margin-bottom: 8px;
+  color: #fff;
+  font-weight: 800;
+}
+
+.mini-job span {
+  display: block;
+  margin-top: 4px;
+  color: #9fb5ca;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.proof-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.card-grid,
+.integration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.person-card {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.avatar {
+  width: 74px;
+  height: 74px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, rgba(56,189,248,.28), rgba(124,58,237,.28));
+  color: #fff;
+  font-size: 28px;
+  font-weight: 900;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.client-card p,
+.person-card p,
+.integration-card p {
+  margin: 6px 0;
+}
+
+.checkout-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.055);
+  margin-bottom: 10px;
+}
+
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #c7d7ea;
+}
+
+.check-line input {
+  width: auto;
+}
+
+.map-box {
+  width: 100%;
+  min-height: 560px;
+  background: rgba(255,255,255,.04);
+}
+
+@media (max-width: 1100px) {
+  .pricing-grid,
+  .feature-grid,
+  .pipeline,
+  .proof-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .floating-card {
+    position: static;
+    margin: 20px auto;
+  }
+
+  .checkout-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* SELLABLE CRM + MOBILE PATCH */
+.full-width { width: 100%; justify-content: center; }
+.file-chip {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:12px 14px; border-radius:14px; background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.1); color:#d7e6f7; overflow:hidden;
+}
+.file-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-chip button { border:0; background:rgba(255,255,255,.08); color:#fff; border-radius:10px; padding:8px; }
+.import-box { display:grid; gap:10px; margin:12px 0; padding:14px; border-radius:18px; background:rgba(125,211,252,.08); border:1px solid rgba(125,211,252,.14); }
+.tag-grid { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.service-tag { padding:10px 13px; border-radius:999px; background:rgba(56,189,248,.13); border:1px solid rgba(56,189,248,.22); color:#dff6ff; font-weight:800; }
+.upload-panel { position: sticky; top: 20px; align-self:start; }
+.upload-panel .upload-box { min-height:72px; }
+@media (max-width: 900px) {
+  .workspace { padding: 12px; }
+  .content-grid, .mobile-stack { grid-template-columns: 1fr !important; }
+  .upload-panel { position: static; }
+  .panel { padding: 16px; border-radius: 18px; }
+  .topbar { gap: 10px; }
+  .topbar h2 { font-size: 26px; }
+  .button-row { width: 100%; }
+  .button-row button { flex: 1; justify-content: center; }
+  .upload-box { width: 100%; min-height: 82px; }
+  input, textarea, select { font-size: 16px; }
+  .evidence-card { grid-template-columns: 1fr !important; }
+  .evidence-card img, .photo-placeholder { width:100% !important; height:220px !important; }
+  .checkout-row { grid-template-columns:1fr !important; }
+}

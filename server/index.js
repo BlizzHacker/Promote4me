@@ -32,6 +32,72 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
 
 const roleRank = { user: 1, member: 2, manager: 3, admin: 4, super_admin: 5 };
+const ownerSuperAdminIds = new Set(['user-super-moveweight']);
+const ownerSuperAdminEmails = new Set(['me@moveweight.com', 'wadeivy11@gmail.com']);
+const roleCatalog = [
+  { id: 'super_admin', label: 'Product Super Admin', description: 'Promote4.me owner only. Controls platform-wide settings and other tenants.' },
+  { id: 'admin', label: 'Customer Admin', description: 'Paying customer / company owner. Controls their workspace, teams, jobs, billing, and integrations.' },
+  { id: 'manager', label: 'Manager / Lead Tech / Dispatcher', description: 'Can manage jobs, clients, team members, proof review, and daily operations.' },
+  { id: 'member', label: 'Field Member', description: 'Technician, driver, flyer team member, contractor, or promoter who submits proof.' },
+  { id: 'user', label: 'Client / Customer Viewer', description: 'Can view assigned jobs, customer proof, and order tracking.' },
+];
+const fieldRoleCatalog = [
+  'Lead Tech',
+  'Dispatcher',
+  'Route Manager',
+  'Technician',
+  'Plumber',
+  'Electrician',
+  'Delivery Driver',
+  'Flyer Team Member',
+  'Promoter',
+  'Contractor',
+  'Customer Service',
+  'Client Viewer'
+];
+const deliveryServices = [
+  'Promote4.me Direct',
+  'Uber Eats',
+  'DoorDash',
+  'Instacart',
+  'Grubhub',
+  'Postmates',
+  'Walmart Spark',
+  'Amazon Flex',
+  'Roadie',
+  'Shipt',
+  'Custom Courier'
+];
+function isOwnerSuperAdmin(user) {
+  return user?.role === 'super_admin' && (ownerSuperAdminIds.has(user.id) || ownerSuperAdminEmails.has(user.email));
+}
+function csvEscape(value) {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? '"' + text.replaceAll('"', '""') + '"' : text;
+}
+function parseCsv(text) {
+  const rows = [];
+  let row = [], cell = '', quote = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], n = text[i + 1];
+    if (quote && c === '"' && n === '"') { cell += '"'; i++; continue; }
+    if (c === '"') { quote = !quote; continue; }
+    if (!quote && c === ',') { row.push(cell); cell = ''; continue; }
+    if (!quote && (c === '\n' || c === '\r')) {
+      if (c === '\r' && n === '\n') i++;
+      row.push(cell); cell = '';
+      if (row.some(x => x.trim())) rows.push(row);
+      row = [];
+      continue;
+    }
+    cell += c;
+  }
+  row.push(cell);
+  if (row.some(x => x.trim())) rows.push(row);
+  if (!rows.length) return [];
+  const headers = rows.shift().map(h => h.trim().toLowerCase().replaceAll(' ', '_'));
+  return rows.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ''])));
+}
 const publicPlans = [
   { id: 'free', name: 'Free Launch', price: '$0', jobs: 25, users: 3, proof: 'Basic GPS/photo proof', cta: 'Start free' },
   { id: 'starter', name: 'Starter', price: '$19/mo', jobs: 250, users: 10, proof: 'GPS scoring, uploads, teams', cta: 'Upgrade' },
@@ -96,13 +162,123 @@ app.post('/api/auth/reset-password', async (req, res) => { const { token, passwo
 app.get('/api/auth/verify-email', (req, res) => { const found = all('SELECT * FROM email_verification_tokens WHERE used_at IS NULL').find((t) => t.token_hash === tokenHash(req.query.token || '') && new Date(t.expires_at) > new Date()); if (!found) return res.status(400).send('Invalid or expired verification token.'); run('UPDATE users SET email_verified_at=? WHERE id=?', [now(), found.user_id]); run('UPDATE email_verification_tokens SET used_at=? WHERE id=?', [now(), found.id]); res.send('Email verified. You can return to Promote4.me.'); });
 app.get('/api/me', requireAuth, (req, res) => res.json({ user: getCurrentUser(req.user.id) }));
 
-app.get('/api/bootstrap', requireAuth, (req, res) => { const tid = tenantId(req); updateTenantActivity(tid); res.json({ tenant: row('SELECT * FROM tenants WHERE id = ?', [tid]), roles: Object.keys(roleRank), plans: publicPlans, mapProviders, paymentProviders, users: all('SELECT id, username, email, role, full_name, phone, photo_url, status, email_verified_at, last_login_at FROM users WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), teams: all('SELECT * FROM teams WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), teamMembers: all('SELECT * FROM team_members WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), clients: all('SELECT * FROM clients WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), jobs: all('SELECT * FROM jobs WHERE tenant_id = ? ORDER BY created_at DESC', [tid]).map(hydrateJob), integrations: all('SELECT * FROM integrations WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), audit: all('SELECT * FROM audit_events WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 100', [tid]) }); });
+app.get('/api/bootstrap', requireAuth, (req, res) => { const tid = tenantId(req); updateTenantActivity(tid); res.json({ tenant: row('SELECT * FROM tenants WHERE id = ?', [tid]), roles: Object.keys(roleRank), roleCatalog, fieldRoleCatalog, deliveryServices, plans: publicPlans, mapProviders, paymentProviders, users: all('SELECT id, username, email, role, full_name, phone, photo_url, status, email_verified_at, last_login_at FROM users WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), teams: all('SELECT * FROM teams WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), teamMembers: all('SELECT * FROM team_members WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), clients: all('SELECT * FROM clients WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), jobs: all('SELECT * FROM jobs WHERE tenant_id = ? ORDER BY created_at DESC', [tid]).map(hydrateJob), integrations: all('SELECT * FROM integrations WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), audit: all('SELECT * FROM audit_events WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 100', [tid]) }); });
 app.get('/api/public/jobs/:id', (req, res) => { const job = publicJob(req.params.id); if (!job) return res.status(404).json({ error: 'Job not found' }); res.json({ job: hydrateJob(job) }); });
 
 app.post('/api/teams', requireAuth, requireRole('manager'), (req, res) => { const id = publicId('team'); const { name, description = '' } = req.body; run('INSERT INTO teams (id, tenant_id, name, description, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)', [id, tenantId(req), name, description, req.user.id, now()]); audit(req, 'team_created', { team_id: id }); res.json({ team: row('SELECT * FROM teams WHERE id = ?', [id]) }); });
-app.post('/api/users', requireAuth, requireRole('admin'), async (req, res) => { const { username, email, password = 'ChangeMe123!', role = 'manager', full_name, phone = '' } = req.body; if ((roleRank[role] || 0) >= roleRank.super_admin && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Only super admins can create super admins.' }); const id = publicId('user'); run('INSERT INTO users (id, tenant_id, username, email, password_hash, role, full_name, phone, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, tenantId(req), username, email, await hashPassword(password), role, full_name, phone, now()]); res.json({ user: getCurrentUser(id), tempPassword: password }); });
-app.patch('/api/users/:id/role', requireAuth, requireRole('admin'), (req, res) => { const { role } = req.body; if (!roleRank[role]) return res.status(400).json({ error: 'Invalid role.' }); if ((roleRank[role] || 0) >= roleRank.super_admin && req.user.role !== 'super_admin') return res.status(403).json({ error: 'Only super admins can grant super admin.' }); run('UPDATE users SET role=? WHERE id=? AND tenant_id=?', [role, req.params.id, tenantId(req)]); res.json({ user: getCurrentUser(req.params.id) }); });
+app.post('/api/users', requireAuth, requireRole('admin'), async (req, res) => {
+  const { username, email, password = 'ChangeMe123!', role = 'manager', full_name, phone = '' } = req.body;
+  let requestedRole = roleRank[role] ? role : 'manager';
+  if (requestedRole === 'super_admin' && !isOwnerSuperAdmin(req.user)) {
+    return res.status(403).json({ error: 'Only Wade / Promote4.me owner can create super admins.' });
+  }
+  if (requestedRole === 'admin' && req.user.role !== 'super_admin') requestedRole = 'manager';
+  const id = publicId('user');
+  run('INSERT INTO users (id, tenant_id, username, email, password_hash, role, full_name, phone, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, tenantId(req), username, email, await hashPassword(password), requestedRole, full_name, phone, now()]);
+  audit(req, 'user_created', { target_user_id: id, role: requestedRole });
+  res.json({ user: getCurrentUser(id), tempPassword: password });
+});
+app.patch('/api/users/:id/role', requireAuth, requireRole('admin'), (req, res) => {
+  const { role } = req.body;
+  if (!roleRank[role]) return res.status(400).json({ error: 'Invalid role.' });
+  const target = row('SELECT * FROM users WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
+  if (!target) return res.status(404).json({ error: 'User not found.' });
+  if ((role === 'super_admin' || target.role === 'super_admin') && !isOwnerSuperAdmin(req.user)) {
+    return res.status(403).json({ error: 'Only Wade / Promote4.me owner can manage super admins.' });
+  }
+  run('UPDATE users SET role=? WHERE id=? AND tenant_id=?', [role, req.params.id, tenantId(req)]);
+  audit(req, 'user_role_changed', { target_user_id: req.params.id, role });
+  res.json({ user: getCurrentUser(req.params.id) });
+});
 app.post('/api/team-members', requireAuth, requireRole('manager'), upload.single('photo'), (req, res) => { const id = publicId('member'); const photoUrl = req.file ? `/uploads/${req.file.filename}` : req.body.photo_url || ''; const b = req.body; run(`INSERT INTO team_members (id, tenant_id, team_id, full_name, email, phone, role, pay_rate, territory, photo_url, emergency_contact, notes, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [id, tenantId(req), b.team_id, b.full_name, b.email || '', b.phone || '', b.role || 'Member', b.pay_rate || '', b.territory || '', photoUrl, b.emergency_contact || '', b.notes || '', b.status || 'active', now()]); res.json({ member: row('SELECT * FROM team_members WHERE id = ?', [id]) }); });
+
+app.get('/api/crm/catalog', requireAuth, (req, res) => {
+  res.json({ roleCatalog, fieldRoleCatalog, deliveryServices });
+});
+
+app.get('/api/team-members/export.csv', requireAuth, requireRole('manager'), (req, res) => {
+  const rows = all('SELECT full_name,email,phone,role,pay_rate,territory,emergency_contact,notes,status,created_at FROM team_members WHERE tenant_id=? ORDER BY full_name', [tenantId(req)]);
+  const headers = ['full_name','email','phone','role','pay_rate','territory','emergency_contact','notes','status','created_at'];
+  const csv = [headers.join(','), ...rows.map(r => headers.map(h => csvEscape(r[h])).join(','))].join('\n');
+  audit(req, 'team_members_exported', { count: rows.length });
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="promote4me-team-members.csv"');
+  res.send(csv);
+});
+
+app.post('/api/team-members/import', requireAuth, requireRole('manager'), (req, res) => {
+  const { csv, team_id } = req.body || {};
+  if (!csv) return res.status(400).json({ error: 'CSV text is required.' });
+  const teamId = team_id || row('SELECT id FROM teams WHERE tenant_id=? ORDER BY created_at LIMIT 1', [tenantId(req)])?.id;
+  if (!teamId) return res.status(400).json({ error: 'Create a team before importing members.' });
+  const rows = parseCsv(csv);
+  let imported = 0, skipped = 0;
+  for (const r of rows) {
+    const fullName = r.full_name || r.name || r.member || '';
+    if (!fullName.trim()) { skipped++; continue; }
+    const id = publicId('member');
+    run(`INSERT INTO team_members (id, tenant_id, team_id, full_name, email, phone, role, pay_rate, territory, emergency_contact, notes, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+      id, tenantId(req), teamId, fullName.trim(), r.email || '', r.phone || '', r.role || 'Field Member',
+      r.pay_rate || '', r.territory || '', r.emergency_contact || '', r.notes || '', r.status || 'active', now()
+    ]);
+    imported++;
+  }
+  audit(req, 'team_members_imported', { imported, skipped });
+  res.json({ imported, skipped });
+});
+
+app.patch('/api/team-members/:id', requireAuth, requireRole('manager'), upload.single('photo'), (req, res) => {
+  const existing = row('SELECT * FROM team_members WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
+  if (!existing) return res.status(404).json({ error: 'Team member not found.' });
+  const b = { ...existing, ...req.body };
+  const photoUrl = req.file ? `/uploads/${req.file.filename}` : b.photo_url || existing.photo_url || '';
+  run(`UPDATE team_members SET team_id=?, full_name=?, email=?, phone=?, role=?, pay_rate=?, territory=?, photo_url=?, emergency_contact=?, notes=?, status=? WHERE id=? AND tenant_id=?`, [
+    b.team_id || existing.team_id, b.full_name, b.email || '', b.phone || '', b.role || 'Field Member',
+    b.pay_rate || '', b.territory || '', photoUrl, b.emergency_contact || '', b.notes || '', b.status || 'active',
+    req.params.id, tenantId(req)
+  ]);
+  audit(req, 'team_member_updated', { member_id: req.params.id });
+  res.json({ member: row('SELECT * FROM team_members WHERE id=?', [req.params.id]) });
+});
+
+app.delete('/api/team-members/:id', requireAuth, requireRole('manager'), (req, res) => {
+  const existing = row('SELECT * FROM team_members WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
+  if (!existing) return res.status(404).json({ error: 'Team member not found.' });
+  run('UPDATE team_members SET status=? WHERE id=? AND tenant_id=?', ['deleted', req.params.id, tenantId(req)]);
+  audit(req, 'team_member_deleted', { member_id: req.params.id });
+  res.json({ ok: true });
+});
+
+app.patch('/api/users/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  const target = row('SELECT * FROM users WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
+  if (!target) return res.status(404).json({ error: 'User not found.' });
+  if (target.role === 'super_admin' && !isOwnerSuperAdmin(req.user)) {
+    return res.status(403).json({ error: 'Only Wade / Promote4.me owner can edit super admins.' });
+  }
+  const b = { ...target, ...req.body };
+  let nextRole = roleRank[b.role] ? b.role : target.role;
+  if ((nextRole === 'super_admin' || target.role === 'super_admin') && !isOwnerSuperAdmin(req.user)) {
+    return res.status(403).json({ error: 'Only Wade / Promote4.me owner can manage super admins.' });
+  }
+  run('UPDATE users SET username=?, email=?, role=?, full_name=?, phone=?, status=? WHERE id=? AND tenant_id=?', [
+    b.username, b.email, nextRole, b.full_name, b.phone || '', b.status || 'active', req.params.id, tenantId(req)
+  ]);
+  if (req.body.password) run('UPDATE users SET password_hash=? WHERE id=? AND tenant_id=?', [await hashPassword(req.body.password), req.params.id, tenantId(req)]);
+  audit(req, 'user_updated', { target_user_id: req.params.id });
+  res.json({ user: getCurrentUser(req.params.id) });
+});
+
+app.delete('/api/users/:id', requireAuth, requireRole('admin'), (req, res) => {
+  const target = row('SELECT * FROM users WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
+  if (!target) return res.status(404).json({ error: 'User not found.' });
+  if (target.role === 'super_admin' || target.id === req.user.id) return res.status(403).json({ error: 'Cannot delete this account.' });
+  run('UPDATE users SET status=? WHERE id=? AND tenant_id=?', ['deleted', req.params.id, tenantId(req)]);
+  audit(req, 'user_deleted', { target_user_id: req.params.id });
+  res.json({ ok: true });
+});
+
+
 app.post('/api/clients', requireAuth, requireRole('manager'), (req, res) => { const id = publicId('client'); const b = req.body; run('INSERT INTO clients (id, tenant_id, name, email, phone, address, lat, lng, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, tenantId(req), b.name, b.email || '', b.phone || '', b.address || '', b.lat || null, b.lng || null, b.notes || '', now()]); res.json({ client: row('SELECT * FROM clients WHERE id = ?', [id]) }); });
 app.post('/api/jobs', requireAuth, requireRole('manager'), (req, res) => { const id = req.body.id || `P4-${Date.now().toString().slice(-6)}`; const b = req.body; run(`INSERT INTO jobs (id, tenant_id, team_id, client_id, assigned_to, type, title, order_number, source, customer_name, customer_email, customer_phone, address, lat, lng, status, eta, reward_cents, instructions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [id, tenantId(req), b.team_id || null, b.client_id || null, b.assigned_to || null, b.type, b.title, b.order_number || '', b.source || 'Manual', b.customer_name || '', b.customer_email || '', b.customer_phone || '', b.address, b.lat || null, b.lng || null, b.status || 'Assigned', b.eta || '', Number(b.reward_cents || 0), b.instructions || '', now(), now()]); run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tenantId(req), id, req.user.id, 'Job created', now()]); res.json({ job: hydrateJob(row('SELECT * FROM jobs WHERE id = ?', [id])) }); });
 app.patch('/api/jobs/:id', requireAuth, requireRole('manager'), (req, res) => { const b = req.body; const job = row('SELECT * FROM jobs WHERE id = ? AND tenant_id = ?', [req.params.id, tenantId(req)]); if (!job) return res.status(404).json({ error: 'Job not found' }); const next = { ...job, ...b, updated_at: now() }; run(`UPDATE jobs SET team_id=?, client_id=?, assigned_to=?, type=?, title=?, order_number=?, source=?, customer_name=?, customer_email=?, customer_phone=?, address=?, lat=?, lng=?, status=?, eta=?, reward_cents=?, instructions=?, updated_at=? WHERE id=?`, [next.team_id, next.client_id, next.assigned_to, next.type, next.title, next.order_number, next.source, next.customer_name, next.customer_email, next.customer_phone, next.address, next.lat, next.lng, next.status, next.eta, next.reward_cents, next.instructions, next.updated_at, job.id]); run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tenantId(req), job.id, req.user.id, `Job updated: ${b.status || 'details changed'}`, now()]); res.json({ job: hydrateJob(row('SELECT * FROM jobs WHERE id = ?', [job.id])) }); });
