@@ -85,7 +85,8 @@ export default function ProductApp() {
   if (!boot) return <div className="loading-screen"><Sparkles /> Loading Promote4.me...</div>;
 
   const menu = [
-    ["dashboard", "Dashboard", LayoutDashboard],
+    ["dashboard", session.user?.role === "super_admin" ? "Super Admin" : "Dashboard", LayoutDashboard],
+    ["hierarchy", session.user?.role === "super_admin" ? "Clients > Companies > Teams > Users" : "Companies > Teams > Users", Building2],
     ["jobs", "Jobs & Orders", ClipboardList],
     ["review", "Evidence Review", ShieldCheck],
     ["map", "Proof Map", Map],
@@ -127,6 +128,7 @@ export default function ProductApp() {
         {notice && <div className="toast"><span>{notice}</span><button onClick={() => setNotice("")}>×</button></div>}
 
         {active === "dashboard" && <Dashboard boot={boot} />}
+        {active === "hierarchy" && <HierarchyConsole boot={boot} user={session.user} />}
         {active === "jobs" && <Jobs {...props} />}
         {active === "review" && <EvidenceReview {...props} />}
         {active === "map" && <ProofMap boot={boot} />}
@@ -156,6 +158,17 @@ function PublicSite({ plans, onAuthed }) {
           <button className="primary big" onClick={() => setMode("signup")}>Start free</button>
           <button className="secondary big" onClick={() => setMode("login")}>Log in</button>
           <button className="secondary big" onClick={authentik}>Authentik / Social Login</button>
+        </div>
+
+        <div className="demo-tour-box">
+          <h2>Tour the live demo</h2>
+          <p>Password for every demo role: <strong>TestUser123!</strong></p>
+          <div className="demo-login-grid">
+            <article><strong>Demo Admin</strong><span>Test</span><small>Companies, teams, users, jobs, proof review</small><button className="primary" onClick={() => setMode("login")}>Demo</button></article>
+            <article><strong>Demo Manager</strong><span>TestManager</span><small>Dispatch, routes, CRM, evidence approvals</small><button className="primary" onClick={() => setMode("login")}>Demo</button></article>
+            <article><strong>Demo Field Member</strong><span>TestMember</span><small>Mobile proof upload and assigned work</small><button className="primary" onClick={() => setMode("login")}>Demo</button></article>
+            <article><strong>Demo Client</strong><span>TestClient</span><small>Customer proof and order history</small><button className="primary" onClick={() => setMode("login")}>Demo</button></article>
+          </div>
         </div>
         <div className="tag-grid">
           {deliveryServices.map((service) => <span className="service-tag" key={service}>{service}</span>)}
@@ -188,7 +201,7 @@ function PublicSite({ plans, onAuthed }) {
 }
 
 function AuthCard({ action, onAuthed, onBack }) {
-  const [form, setForm] = useState({ companyName: "", fullName: "", email: "", username: action === "login" ? "Test" : "", password: "", plan: "free" });
+  const [form, setForm] = useState({ companyName: "", fullName: "", email: "", username: action === "login" ? "Test" : "", password: action === "login" ? "TestUser123!" : "", plan: "free" });
   const [error, setError] = useState("");
 
   async function submit(event) {
@@ -226,6 +239,46 @@ function AuthCard({ action, onAuthed, onBack }) {
       <button className="primary">Continue</button>
       {error && <div className="error-box">{error}</div>}
     </form>
+  );
+}
+
+function isMoveweightOwner(user) {
+  return user?.role === "super_admin" &&
+    (user.username === "moveweight" || user.email === "me@moveweight.com" || user.email === "wadeivy11@gmail.com");
+}
+
+function HierarchyConsole({ boot, user }) {
+  const owner = isMoveweightOwner(user);
+  const clients = boot.clients || [];
+  const teams = boot.teams || [];
+  const users = boot.users || [];
+  const members = boot.teamMembers || [];
+
+  return (
+    <div className="content-grid">
+      <section className="panel wide">
+        <h3>{owner ? "Clients > Companies > Teams > Users" : "Companies > Teams > Users"}</h3>
+        <p className="hint">
+          {owner
+            ? "Only moveweight / Wade sees product-owner hierarchy. Paying customer admins start at Companies."
+            : "Admin view for companies, teams, managers, field users, and clients."}
+        </p>
+
+        <div className="stat-grid">
+          <Stat icon={Building2} label={owner ? "Clients" : "Companies"} value={owner ? clients.length : 1} />
+          <Stat icon={Store} label="Companies" value={1} />
+          <Stat icon={Users} label="Teams" value={teams.length} />
+          <Stat icon={UserPlus} label="Users" value={users.length} />
+        </div>
+
+        <div className="hierarchy-tree">
+          <article><h4>{owner ? "Client account" : "Company"}</h4><strong>{boot.tenant?.name}</strong><p>{boot.tenant?.plan} plan</p></article>
+          <article><h4>Teams</h4>{teams.map((team) => <div className="tree-row" key={team.id}>{team.name}<span>{members.filter((member) => member.team_id === team.id).length} people</span></div>)}</article>
+          <article><h4>Users</h4>{users.map((u) => <div className="tree-row" key={u.id}>{u.full_name}<span>{u.role}</span></div>)}</article>
+          <article><h4>Clients</h4>{clients.map((client) => <div className="tree-row" key={client.id}>{client.name}<span>{client.address}</span></div>)}</article>
+        </div>
+      </section>
+    </div>
   );
 }
 
