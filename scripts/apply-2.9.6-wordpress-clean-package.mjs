@@ -78,7 +78,7 @@ const readme = `=== Promote4.me Proof Manager ===
 Contributors: promote4me
 Tags: proof, delivery, field service, orders, gps
 Requires at least: 6.0
-Tested up to: 6.6
+Tested up to: 6.9
 Requires PHP: 7.4
 Stable tag: 2.9.6
 License: GPLv2 or later
