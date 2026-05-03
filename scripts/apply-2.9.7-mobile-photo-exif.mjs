@@ -26,10 +26,14 @@ function p4me297ExifSchema() {
 p4me297ExifSchema();`);
 }
 
+// Repair older generated runtime if it was already patched with the wrong middleware name.
+server = server.replaceAll("app.post('/api/evidence/:jobId/photo-meta', authRequired", "app.post('/api/evidence/:jobId/photo-meta', requireAuth");
+server = server.replaceAll("app.get('/api/evidence/:jobId', authRequired", "app.get('/api/evidence/:jobId', requireAuth");
+
 if (!has(server, "app.post('/api/evidence/:jobId/photo-meta'")) {
   const endpoints = `
 function p4meDistanceMeters(aLat,aLng,bLat,bLng){ if([aLat,aLng,bLat,bLng].some(v=>v===null||v===undefined||v===''||Number.isNaN(Number(v)))) return null; const R=6371000, toRad=d=>Number(d)*Math.PI/180; const dLat=toRad(bLat-aLat), dLng=toRad(bLng-aLng); const s=Math.sin(dLat/2)**2+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2; return Math.round(R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s))); }
-app.post('/api/evidence/:jobId/photo-meta', authRequired, (req,res)=>{
+app.post('/api/evidence/:jobId/photo-meta', requireAuth, (req,res)=>{
   const job = row('SELECT * FROM jobs WHERE id=? AND tenant_id=?', [req.params.jobId, req.user.tenant_id]);
   if(!job) return res.status(404).json({error:'Job not found.'});
   const b=req.body||{}, exif=b.exif||{};
@@ -39,11 +43,11 @@ app.post('/api/evidence/:jobId/photo-meta', authRequired, (req,res)=>{
   const source = Number.isFinite(photoLat) && Number.isFinite(photoLng) ? 'photo_exif' : (Number.isFinite(browserLat)&&Number.isFinite(browserLng) ? 'browser_gps' : 'missing');
   const confidence = source==='photo_exif' && distance!==null && distance <= 150 ? 98 : source==='photo_exif' ? 82 : source==='browser_gps' ? 60 : 20;
   const id = publicId('evmeta');
-  run('INSERT INTO evidence (id,tenant_id,job_id,user_id,type,notes,lat,lng,accuracy_m,confidence,status,file_url,exif_json,photo_lat,photo_lng,photo_taken_at,device_make,device_model,gps_source,gps_distance_m,created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, req.user.tenant_id, job.id, req.user.id, 'photo_meta', b.notes||'', Number.isFinite(browserLat)?browserLat:null, Number.isFinite(browserLng)?browserLng:null, b.accuracy_m||null, confidence, 'submitted', b.file_url||'', JSON.stringify(exif), Number.isFinite(photoLat)?photoLat:null, Number.isFinite(photoLng)?photoLng:null, exif.dateTimeOriginal||exif.CreateDate||exif.ModifyDate||'', exif.Make||'', exif.Model||'', source, distance, now()]);
+  run('INSERT INTO evidence (id,tenant_id,job_id,user_id,type,notes,lat,lng,accuracy_m,confidence,status,file_url,exif_json,photo_lat,photo_lng,photo_taken_at,device_make,device_model,gps_source,gps_distance_m,created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, req.user.tenant_id, job.id, req.user.id, 'photo_meta', b.notes||'', Number.isFinite(browserLat)?browserLat:null, Number.isFinite(browserLng)?browserLng:null, b.accuracy_m||null, confidence, 'submitted', b.file_url||'', JSON.stringify(exif), Number.isFinite(photoLat)?photoLat:null, Number.isFinite(photoLng)?photoLng:null, exif.dateTimeOriginal||exif.DateTimeOriginal||exif.CreateDate||exif.ModifyDate||'', exif.Make||'', exif.Model||'', source, distance, now()]);
   run('UPDATE jobs SET status=?, updated_at=? WHERE id=?', ['Submitted', now(), job.id]);
-  res.json({ok:true,evidence:row('SELECT * FROM evidence WHERE id=?',[id]),analysis:{source,confidence,distance_m:distance,photo_has_gps:source==='photo_exif',device:[exif.Make,exif.Model].filter(Boolean).join(' '),taken_at:exif.dateTimeOriginal||exif.CreateDate||exif.ModifyDate||''}});
+  res.json({ok:true,evidence:row('SELECT * FROM evidence WHERE id=?',[id]),analysis:{source,confidence,distance_m:distance,photo_has_gps:source==='photo_exif',device:[exif.Make,exif.Model].filter(Boolean).join(' '),taken_at:exif.dateTimeOriginal||exif.DateTimeOriginal||exif.CreateDate||exif.ModifyDate||''}});
 });
-app.get('/api/evidence/:jobId', authRequired, (req,res)=>{ const rows=all('SELECT * FROM evidence WHERE tenant_id=? AND job_id=? ORDER BY created_at DESC',[req.user.tenant_id, req.params.jobId]); res.json({evidence:rows}); });
+app.get('/api/evidence/:jobId', requireAuth, (req,res)=>{ const rows=all('SELECT * FROM evidence WHERE tenant_id=? AND job_id=? ORDER BY created_at DESC',[req.user.tenant_id, req.params.jobId]); res.json({evidence:rows}); });
 `;
   server = server.replace("app.post('/api/auth/register'", endpoints + "\napp.post('/api/auth/register'");
 }
