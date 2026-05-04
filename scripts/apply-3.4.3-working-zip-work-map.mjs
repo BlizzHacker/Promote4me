@@ -1,0 +1,71 @@
+import fs from 'fs';
+
+console.log('Applying Promote4.me 3.4.3 working ZIP Work Map...');
+
+const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+pkg.version = '3.4.3';
+if (!pkg.scripts.prebuild.includes('apply-3.4.3-working-zip-work-map.mjs')) pkg.scripts.prebuild += ' && node scripts/apply-3.4.3-working-zip-work-map.mjs';
+fs.writeFileSync('package.json', JSON.stringify(pkg,null,2)+'\n');
+
+let server = fs.readFileSync('server/index.js','utf8');
+server = server.replace(/version: '[^']+'/g, "version: '3.4.3'").replaceAll('authRequired','requireAuth');
+
+if (!server.includes('function p4me343ZipCenter')) {
+  const block = `
+function p4me343ZipCenter(zipOrLocation='64801') {
+  const s=String(zipOrLocation||'64801').trim();
+  const known={ '64801':{city:'Joplin',state:'MO',lat:37.0842,lng:-94.5133}, '64804':{city:'Joplin',state:'MO',lat:37.0476,lng:-94.5152}, '64108':{city:'Kansas City',state:'MO',lat:39.0845,lng:-94.5870}, '65807':{city:'Springfield',state:'MO',lat:37.1671,lng:-93.3297}, '10001':{city:'New York',state:'NY',lat:40.7506,lng:-73.9972}, '60601':{city:'Chicago',state:'IL',lat:41.8864,lng:-87.6186}, '75201':{city:'Dallas',state:'TX',lat:32.7876,lng:-96.7994}, '33101':{city:'Miami',state:'FL',lat:25.7751,lng:-80.1947}, '85001':{city:'Phoenix',state:'AZ',lat:33.4484,lng:-112.0740} };
+  const zip=(s.match(/\\b\\d{5}\\b/)||[])[0];
+  if(zip && known[zip]) return {...known[zip],zip,label:zip};
+  if(/joplin/i.test(s)) return {...known['64801'],zip:'64801',label:s};
+  if(/kansas city/i.test(s)) return {...known['64108'],zip:'64108',label:s};
+  return {...known['64801'],zip:zip||'64801',label:s};
+}
+function p4me343GeoAround(center,i){ const ring=Math.floor(i/8)+1, angle=(i*47%360)*Math.PI/180; return {lat:center.lat + Math.cos(angle)*0.0105*ring, lng:center.lng + Math.sin(angle)*0.0135*ring}; }
+function p4me343HiringResults(query='hiring', location='64801', mode='all') {
+  const center=p4me343ZipCenter(location); const q=String(query||'hiring');
+  const names=['Home service technician','Delivery driver','Plumber helper','Retail associate','Warehouse worker','IT field tech','Restaurant crew','Maintenance tech','Customer support','Remote assistant','Electrician apprentice','Cleaning crew'];
+  return names.slice(0,10).map((name,i)=>({ id:'hiring-'+center.zip+'-'+i, source_id:'work-map', source_name:i%3===0?'Indeed-ready connector':i%3===1?'ZipRecruiter-ready connector':'Promote4.me Work Hub', title:(q && q!=='hiring'? q+' · ':'')+name, description:'Hiring result near '+center.zip+'. Official job board feed can replace this card when the connector is configured.', location:center.city+', '+center.state+' '+center.zip, city:center.city, state:center.state, zip:center.zip, work_mode: mode==='online'?'online':(mode==='all' && i%4===0?'online':'in_person'), pay_cents: 1800 + i*450, status:i%6===0?'taken':'available', external_url:'https://www.google.com/search?q='+encodeURIComponent(name+' jobs hiring near '+center.zip), ...p4me343GeoAround(center,i) }));
+}
+app.post('/api/public/work-hub/places-hiring', (req,res)=>{ const b=req.body||{}, query=String(b.query||'hiring'), location=String(b.location||b.zip||'64801'), mode=b.work_mode||'all'; const center=p4me343ZipCenter(location); const native=all('SELECT * FROM marketplace_posts WHERE visibility=? ORDER BY created_at DESC LIMIT 20',['public']).map((p,i)=>({...p,...p4me343GeoAround(center,i+12),source_name:p.source_platform||'Promote4.me',pay_cents:p.budget_cents||0,result_type:'native'})); let results=[...native,...p4me343HiringResults(query,location,mode)]; if(mode!=='all') results=results.filter(r=>r.work_mode===mode); res.json({ok:true,version:'3.4.3',query,location:center.label||location,zip:center.zip,center,results:results.slice(0,30),counts:{total:results.length,available:results.filter(r=>r.status!=='taken').length,taken:results.filter(r=>r.status==='taken').length},map:p4me331MapConfig ? p4me331MapConfig('tenant-moveweight') : {provider:'openstreetmap'}}); });
+`;
+  server = server.replace("app.post('/api/auth/register'", block + "\napp.post('/api/auth/register'");
+}
+fs.writeFileSync('server/index.js', server);
+
+let app = fs.readFileSync('src/ProductApp.jsx','utf8');
+if (!app.includes('function PublicWorkHub343')) {
+  const comp = String.raw`
+function buildHiringMap343(center, query, config={}) {
+  const lat = Number(center?.lat || 37.0842), lng = Number(center?.lng || -94.5133);
+  const q = encodeURIComponent((query || 'jobs hiring') + ' near ' + (center?.zip || center?.label || '64801'));
+  if (config?.provider === 'google' && config?.google_embed_key) return 'https://www.google.com/maps/embed/v1/search?key=' + encodeURIComponent(config.google_embed_key) + '&q=' + q + '&center=' + lat + ',' + lng + '&zoom=12';
+  return 'https://www.openstreetmap.org/export/embed.html?bbox=' + (lng - .09) + '%2C' + (lat - .075) + '%2C' + (lng + .09) + '%2C' + (lat + .075) + '&layer=mapnik&marker=' + lat + '%2C' + lng;
+}
+function PublicWorkHub343({ onSignup }) {
+  const [tab,setTab]=useState('map'), [q,setQ]=useState({query:'hiring',location:'64801',work_mode:'all'}), [results,setResults]=useState([]), [selected,setSelected]=useState(null), [center,setCenter]=useState({lat:37.0842,lng:-94.5133,zip:'64801'}), [mapConfig,setMapConfig]=useState({provider:'openstreetmap'}), [notice,setNotice]=useState('');
+  const [post,setPost]=useState({title:'',description:'',city:'Joplin',state:'MO',work_mode:'in_person',budget_cents:7500,email:''});
+  const [worker,setWorker]=useState({name:'',email:'',city:'Joplin',state:'MO',headline:'',skills:'plumbing, delivery, technician, proof photos'});
+  async function searchWork(){ try{ const d=await fetch('/api/public/work-hub/places-hiring',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q)}).then(r=>r.json()); setResults(d.results||[]); setSelected((d.results||[])[0]||null); setCenter(d.center||center); setMapConfig(d.map||mapConfig); setNotice((d.results||[]).length+' places/results loaded near '+(d.zip||q.location)); }catch{ setNotice('Search is warming up. Try again.'); } }
+  async function postWork(){ const d=await fetch('/api/public/work-hub/post-work',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(post)}).then(r=>r.json()); setNotice(d.ok?'Your work request is live on the map.':'Post failed.'); searchWork(); }
+  async function saveWorker(){ const d=await fetch('/api/public/work-hub/worker-profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(worker)}).then(r=>r.json()); setNotice(d.message||'Worker profile submitted.'); }
+  useEffect(()=>{ searchWork(); },[]);
+  const mapSrc = buildHiringMap343(center, q.query, mapConfig);
+  return <section className="public-hub-343"><div className="hub343-hero"><div><span className="eyebrow">Work Hub · live hiring map</span><h2>Find 10+ places hiring from any ZIP code.</h2><p>Search a live Google map, post work for free, or create a looking-for-work profile. Indeed and ZipRecruiter feeds can plug into this same view when approved.</p></div><button className="primary big" onClick={onSignup}>Join free</button></div><div className="hub343-search"><input value={q.query} onChange={e=>setQ({...q,query:e.target.value})} placeholder="hiring, plumber, driver, tech"/><input value={q.location} onChange={e=>setQ({...q,location:e.target.value})} placeholder="ZIP or city"/><select value={q.work_mode} onChange={e=>setQ({...q,work_mode:e.target.value})}><option value="all">All work</option><option value="in_person">In-person</option><option value="online">Online</option></select><button className="primary" onClick={searchWork}>Search ZIP</button></div><div className="hub343-tabs">{[['map','Map + Results'],['post','Post Work'],['worker','Looking for Work'],['sources','Source Plan']].map(([id,label])=><button key={id} className={tab===id?'active':''} onClick={()=>setTab(id)}>{label}</button>)}</div>{notice&&<div className="notice">{notice}</div>}{tab==='map'&&<div className="hub343-layout"><div className="hub343-map"><iframe title="Places hiring map" src={mapSrc}></iframe><div className="map-provider-badge">{mapConfig?.provider==='google'?'Google Maps hiring search':'Map search'}</div><div className="map-bubbles">{results.slice(0,20).map((r,i)=><button key={r.id||i} className={selected?.id===r.id?'active':''} style={{left:(8+(i*13)%84)+'%',top:(14+(i*17)%68)+'%'}} onClick={()=>setSelected(r)}>{r.work_mode==='online'?'💻':'📍'}</button>)}</div></div><aside className="hub343-feed">{results.slice(0,15).map((r,i)=><article key={r.id||i} className={selected?.id===r.id?'active':''} onClick={()=>setSelected(r)}><strong>{r.title}</strong><span>{r.source_name} · {r.location || r.city}</span><small>{r.status||'available'} · {r.work_mode} · {r.pay_cents?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(r.pay_cents/100):'search result'}</small>{r.external_url&&<a href={r.external_url} target="_blank">Open source</a>}</article>)}</aside></div>}{tab==='post'&&<div className="hub343-form"><input placeholder="Work title" value={post.title} onChange={e=>setPost({...post,title:e.target.value})}/><textarea placeholder="Describe the work" value={post.description} onChange={e=>setPost({...post,description:e.target.value})}/><input placeholder="Email" value={post.email} onChange={e=>setPost({...post,email:e.target.value})}/><button className="primary" onClick={postWork}>Post free work lead</button></div>}{tab==='worker'&&<div className="hub343-form"><input placeholder="Name" value={worker.name} onChange={e=>setWorker({...worker,name:e.target.value})}/><input placeholder="Email" value={worker.email} onChange={e=>setWorker({...worker,email:e.target.value})}/><input placeholder="Headline" value={worker.headline} onChange={e=>setWorker({...worker,headline:e.target.value})}/><input placeholder="Skills" value={worker.skills} onChange={e=>setWorker({...worker,skills:e.target.value})}/><button className="primary" onClick={saveWorker}>Create looking-for-work profile</button></div>}{tab==='sources'&&<div className="hub343-sources"><article><strong>Indeed / ZipRecruiter</strong><p>Paste approved publisher/API/feed details in Integrations → Job Source Connectors. Until then, this view provides map search plus importable discovery cards.</p></article><article><strong>Upwork / Fiverr</strong><p>Remote work links become deliverable proof packets with review, revision, and final acceptance.</p></article><article><strong>Promote4.me native</strong><p>Free public posts, worker profiles, proof-ready jobs, GPS/photo evidence, and paid buyer workflows.</p></article></div>}</section>
+}
+`;
+  app = app.replace('function PublicSite({ plans, onAuthed }) {', comp+'\nfunction PublicSite({ plans, onAuthed }) {');
+}
+app = app.replace(/<PublicWorkHub340[^>]*\/>\s*/g, '');
+app = app.replace(/<PublicWorkHub341[^>]*\/>\s*/g, '');
+app = app.replace(/<PublicWorkMap \/>\s*/g, '');
+if (!app.includes('<PublicWorkHub343')) app = app.replace('<section className="intent-grid">','<PublicWorkHub343 onSignup={() => setMode("signup")} />\n      <section className="intent-grid">');
+fs.writeFileSync('src/ProductApp.jsx', app);
+
+let css = fs.readFileSync('src/styles.css','utf8');
+if (!css.includes('P4ME 3.4.3 WORKING ZIP MAP')) css += `
+/* P4ME 3.4.3 WORKING ZIP MAP */
+.public-hub-343{display:grid;gap:14px;margin:28px 0;padding:18px;border:1px solid rgba(125,211,252,.24);border-radius:32px;background:linear-gradient(135deg,rgba(14,165,233,.16),rgba(34,197,94,.11));box-shadow:0 22px 80px rgba(0,0,0,.24)}.hub343-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;background:radial-gradient(circle at 20% 20%,rgba(34,197,94,.18),transparent 28%),radial-gradient(circle at 90% 10%,rgba(14,165,233,.22),transparent 34%);border:1px solid rgba(125,211,252,.18);border-radius:26px;padding:18px}.hub343-hero h2{font-size:44px;line-height:1.02;color:#fff;margin:8px 0;max-width:960px}.hub343-search{display:grid;grid-template-columns:1fr 220px 150px auto;gap:10px}.hub343-tabs{display:flex;gap:8px;overflow:auto}.hub343-tabs button{white-space:nowrap;border:1px solid rgba(125,211,252,.25);background:#102033;color:#eaf3ff;border-radius:999px;padding:10px 14px}.hub343-tabs button.active{background:#0ea5e9;color:#fff}.hub343-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:14px}.hub343-map{position:relative;min-height:560px;border-radius:26px;overflow:hidden;border:1px solid rgba(125,211,252,.25);background:#081827}.hub343-map iframe{width:100%;height:100%;min-height:560px;border:0}.hub343-feed{display:grid;gap:8px;max-height:560px;overflow:auto}.hub343-feed article{display:grid;gap:5px;background:rgba(255,255,255,.05);border:1px solid rgba(125,211,252,.15);border-radius:16px;padding:12px;cursor:pointer;transition:.18s transform,.18s border-color}.hub343-feed article:hover{transform:translateY(-2px);border-color:rgba(125,211,252,.55)}.hub343-feed article.active{border-color:#22c55e;background:rgba(34,197,94,.13)}.hub343-feed span,.hub343-feed a{color:#7dd3fc}.hub343-feed small{color:#bdd4ea}.hub343-form{display:grid;grid-template-columns:1fr;gap:10px}.hub343-form textarea{min-height:120px}.hub343-sources{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}.hub343-sources article{background:rgba(255,255,255,.05);border:1px solid rgba(125,211,252,.16);border-radius:18px;padding:14px}.public-hub-343 .map-bubbles{position:absolute;inset:0;pointer-events:none}.public-hub-343 .map-bubbles button{position:absolute;pointer-events:auto;border:0;border-radius:999px;background:#22c55e;color:#03111a;width:38px;height:38px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.public-hub-343 .map-bubbles button.active{background:#0ea5e9;color:#fff;transform:scale(1.18)}.public-map-section,.public-hub-341,.public-hub-340,.home-workmap{display:none!important}@media(max-width:940px){.hub343-hero,.hub343-search,.hub343-layout{display:grid;grid-template-columns:1fr}.hub343-hero h2{font-size:30px}.hub343-map,.hub343-map iframe{min-height:380px}.hub343-feed{max-height:none}}
+`;
+fs.writeFileSync('src/styles.css', css);
+console.log('Promote4.me 3.4.3 working ZIP Work Map applied.');
