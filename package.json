@@ -1,11 +1,11 @@
 {
   "name": "promote4me-2",
   "private": true,
-  "version": "3.3.1",
+  "version": "3.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "prebuild": "node scripts/apply-beta-hardening.mjs && node scripts/apply-2.5-visible-addons.mjs && node scripts/apply-2.6.0-recovery.mjs && node scripts/apply-2.9.0-public-map-api.mjs && node scripts/apply-2.9.1-api-key-center.mjs && node scripts/apply-2.9.2-version-lock.mjs && node scripts/apply-2.9.3-wordpress-pro.mjs && node scripts/apply-2.9.4-shopify-embedded.mjs && node scripts/apply-2.9.5-wordpress-compliant.mjs && node scripts/apply-2.9.6-wordpress-clean-package.mjs && node scripts/apply-2.9.7-mobile-photo-exif.mjs && node scripts/apply-2.9.8-provider-networks.mjs && node scripts/apply-2.9.9-mobile-workflow-polish.mjs && node scripts/apply-3.0.0-provider-playbooks.mjs && node scripts/apply-3.1.0-worker-marketplace-social.mjs && node scripts/apply-3.2.0-social-search-rewards.mjs && node scripts/apply-3.3.0-work-map-ui-overhaul.mjs && node scripts/apply-3.3.1-map-provider-basic.mjs",
+    "prebuild": "node scripts/apply-beta-hardening.mjs && node scripts/apply-2.5-visible-addons.mjs && node scripts/apply-2.6.0-recovery.mjs && node scripts/apply-2.9.0-public-map-api.mjs && node scripts/apply-2.9.1-api-key-center.mjs && node scripts/apply-2.9.2-version-lock.mjs && node scripts/apply-2.9.3-wordpress-pro.mjs && node scripts/apply-2.9.4-shopify-embedded.mjs && node scripts/apply-2.9.5-wordpress-compliant.mjs && node scripts/apply-2.9.6-wordpress-clean-package.mjs && node scripts/apply-2.9.7-mobile-photo-exif.mjs && node scripts/apply-2.9.8-provider-networks.mjs && node scripts/apply-2.9.9-mobile-workflow-polish.mjs && node scripts/apply-3.0.0-provider-playbooks.mjs && node scripts/apply-3.1.0-worker-marketplace-social.mjs && node scripts/apply-3.2.0-social-search-rewards.mjs && node scripts/apply-3.3.0-work-map-ui-overhaul.mjs && node scripts/apply-3.3.1-map-provider-basic.mjs && node scripts/apply-3.3.2-map-tenant-fallback.mjs && node scripts/apply-3.4.0-public-work-hub.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "api": "node server/index.js",
