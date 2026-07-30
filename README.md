@@ -1,5 +1,8 @@
 # Promote4.me 2.0 Delivery Monitor
 
+A project of the [Move Weight Foundation](https://foundation.moveweight.com), a
+501(c)(3).
+
 Promote4.me has been rebuilt from the legacy PHP / AngularJS project into a modern delivery monitoring product.
 
 ## What works now
