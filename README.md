@@ -85,4 +85,8 @@ Use:
 
 ## Important security note
 
-The legacy folders are preserved for reference, but they include old auth patterns and exposed credentials/API keys. Do not redeploy the legacy PHP app publicly without rotating secrets and replacing auth/CORS/database layers. See `docs/legacy-audit.md`.
+The legacy PHP/AngularJS tree (`api/`, `admin/`, `bot/`, `mobile/`, `p4invite/`)
+has been removed from the working tree: it contained hardcoded database
+credentials and outdated auth patterns. Those credentials remain reachable in
+git history and must be treated as burned — rotate them at the hosting
+provider before anything else. Details in `docs/legacy-audit.md`.
