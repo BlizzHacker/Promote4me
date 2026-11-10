@@ -14,7 +14,7 @@ export async function verifyPassword(password, hash) {
 }
 
 export function signUser(user) {
-  return jwt.sign({ id: user.id, tenant_id: user.tenant_id, role: user.role, email: user.email, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: user.id, tenant_id: user.tenant_id, role: user.role, email: user.email, username: user.username, auth_provider: user.auth_provider }, JWT_SECRET, { expiresIn: '7d' });
 }
 
 export function requireAuth(req, res, next) {
@@ -43,5 +43,5 @@ export function publicId(prefix) {
 }
 
 export function getCurrentUser(id) {
-  return row('SELECT id, tenant_id, username, email, role, full_name, phone, photo_url, status FROM users WHERE id = ?', [id]);
+  return row('SELECT id, tenant_id, username, email, role, full_name, phone, photo_url, status, auth_provider FROM users WHERE id = ?', [id]);
 }

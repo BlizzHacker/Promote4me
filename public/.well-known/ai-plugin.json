@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Promote4.me Social Commander",
+  "name_for_model": "promote4me_commander",
+  "description_for_human": "Automate social media posts, calendar scheduling, comment moderation, auto-replies, and audience growth across Reddit, Facebook, Instagram, Twitter/X, Discord, YouTube, TikTok.",
+  "description_for_model": "Social Media Commander for ChatGPT. Automate, schedule, calendar, and manage comments on Reddit, Facebook, Instagram, Twitter, and major networks. Submit posts, auto-reply to messages, and manage MassPlanner/FollowLiker growth campaigns directly via AI.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://promote4.me/openapi.json"
+  },
+  "logo_url": "https://promote4.me/logo.svg",
+  "contact_email": "support@promote4.me",
+  "legal_info_url": "https://promote4.me/privacy"
+}

@@ -1,484 +1,508 @@
+/**
+ * Promote4.me 4.0 — Clean Architecture Server
+ * 
+ * Organized route structure with proper middleware, configuration, 
+ * and migration system. No inline schema or version patch scripts.
+ */
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import multer from 'multer';
+import cookieParser from 'cookie-parser';
+import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { nanoid } from 'nanoid';
-import { migrate, row, all, run, now, UPLOAD_DIR } from './db.js';
-import { hashPassword, verifyPassword, signUser, requireAuth, requireAdmin, getCurrentUser, publicId } from './auth.js';
+import { migrate, UPLOAD_DIR } from './db.js';
+import { config } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const app = express();
-const PORT = Number(process.env.PORT || 3001);
-const APP_URL = process.env.APP_URL || 'https://promote4.me';
-const AUTHENTIK_URL = process.env.AUTHENTIK_URL || 'https://authentik.moveweight.com';
-const AUTHENTIK_CLIENT_ID = process.env.AUTHENTIK_CLIENT_ID || 'promote4me';
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
 
+// ─── Database migration ───────────────────────────────────────────────
 migrate();
 
-function p4me291CredentialSchema() {
-  const add = (table, column, definition) => {
-    try { run("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition); } catch {}
-  };
-
-  add("jobs", "work_mode", "TEXT NOT NULL DEFAULT 'in_person'");
-  add("jobs", "visibility", "TEXT NOT NULL DEFAULT 'private'");
-  add("jobs", "is_public", "INTEGER NOT NULL DEFAULT 0");
-  add("jobs", "trade", "TEXT NOT NULL DEFAULT ''");
-  add("jobs", "budget_cents", "INTEGER NOT NULL DEFAULT 0");
-
-  run("CREATE TABLE IF NOT EXISTS external_api_keys (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, label TEXT NOT NULL, key_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL DEFAULT 'active', created_by TEXT, created_at TEXT, last_used_at TEXT)");
-}
-p4me291CredentialSchema();
-function p4me290PublicMapSchema() {
-  const add = (table, column, definition) => {
-    try { run('ALTER TABLE ' + table + ' ADD COLUMN ' + column + ' ' + definition); } catch {}
-  };
-  add('jobs', 'trade', "TEXT NOT NULL DEFAULT ''");
-  add('jobs', 'budget_cents', 'INTEGER NOT NULL DEFAULT 0');
-  add('jobs', 'reward_cents', 'INTEGER NOT NULL DEFAULT 0');
-  add('jobs', 'work_mode', "TEXT NOT NULL DEFAULT 'in_person'");
-  add('jobs', 'visibility', "TEXT NOT NULL DEFAULT 'private'");
-  add('jobs', 'is_public', 'INTEGER NOT NULL DEFAULT 0');
-}
-p4me290PublicMapSchema();
-
+// ─── Express setup ────────────────────────────────────────────────────
+const app = express();
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '25mb' }));
+app.use(cookieParser());
 app.use('/uploads', express.static(UPLOAD_DIR));
 app.use(express.static(path.join(__dirname, '..', 'dist')));
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${nanoid(8)}${path.extname(file.originalname || '.jpg')}`),
-});
-const upload = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
+// ─── Import route modules ─────────────────────────────────────────────
+import authRouter from './routes/auth.js';
+import jobsRouter from './routes/jobs.js';
+import teamsRouter from './routes/teams.js';
+import clientsRouter from './routes/clients.js';
+import settingsRouter from './routes/settings.js';
+import integrationsRouter from './routes/integrations.js';
+import adminRouter from './routes/admin.js';
+import publicRouter from './routes/public.js';
+import bootstrapRouter from './routes/bootstrap.js';
+import blogRouter from './routes/blog.js';
+import commanderRouter from './routes/commander.js';
+import { startCommanderScheduler } from './services/commander-scheduler.js';
 
-const roleRank = { user: 1, member: 2, manager: 3, admin: 4, super_admin: 5 };
-const ownerSuperAdminIds = new Set(['user-super-moveweight']);
-const ownerSuperAdminEmails = new Set(['me@moveweight.com', 'wadeivy11@gmail.com']);
-const roleCatalog = [
-  { id: 'super_admin', label: 'Product Super Admin', description: 'Promote4.me owner only. Controls platform-wide settings and other tenants.' },
-  { id: 'admin', label: 'Customer Admin', description: 'Paying customer / company owner. Controls their workspace, teams, jobs, billing, and integrations.' },
-  { id: 'manager', label: 'Manager / Lead Tech / Dispatcher', description: 'Can manage jobs, clients, team members, proof review, and daily operations.' },
-  { id: 'member', label: 'Field Member', description: 'Technician, driver, flyer team member, contractor, or promoter who submits proof.' },
-  { id: 'user', label: 'Client / Customer Viewer', description: 'Can view assigned jobs, customer proof, and order tracking.' },
-];
-const fieldRoleCatalog = [
-  'Lead Tech',
-  'Dispatcher',
-  'Route Manager',
-  'Technician',
-  'Plumber',
-  'Electrician',
-  'Delivery Driver',
-  'Flyer Team Member',
-  'Promoter',
-  'Contractor',
-  'Customer Service',
-  'Client Viewer'
-];
-const deliveryServices = [
-  'Promote4.me Direct',
-  'Uber Eats',
-  'DoorDash',
-  'Instacart',
-  'Grubhub',
-  'Postmates',
-  'Walmart Spark',
-  'Amazon Flex',
-  'Roadie',
-  'Shipt',
-  'Custom Courier'
-];
-function isOwnerSuperAdmin(user) {
-  return user?.role === 'super_admin' && (ownerSuperAdminIds.has(user.id) || ownerSuperAdminEmails.has(user.email));
-}
-function csvEscape(value) {
-  const text = String(value ?? '');
-  return /[",\n]/.test(text) ? '"' + text.replaceAll('"', '""') + '"' : text;
-}
-function parseCsv(text) {
-  const rows = [];
-  let row = [], cell = '', quote = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i], n = text[i + 1];
-    if (quote && c === '"' && n === '"') { cell += '"'; i++; continue; }
-    if (c === '"') { quote = !quote; continue; }
-    if (!quote && c === ',') { row.push(cell); cell = ''; continue; }
-    if (!quote && (c === '\n' || c === '\r')) {
-      if (c === '\r' && n === '\n') i++;
-      row.push(cell); cell = '';
-      if (row.some(x => x.trim())) rows.push(row);
-      row = [];
-      continue;
+// ─── Mount routes ─────────────────────────────────────────────────────
+app.use('/api', authRouter);
+app.use('/api', bootstrapRouter);
+app.use('/api', blogRouter);        // /api/blog/posts
+app.use('/api/jobs', jobsRouter);
+app.use('/api', teamsRouter);      // /api/teams, /api/team-members
+app.use('/api', clientsRouter);    // /api/clients
+app.use('/api', settingsRouter);   // /api/settings, /api/billing, /api/external-keys
+app.use('/api', integrationsRouter);// /api/integrations
+app.use('/api', adminRouter);      // /api/admin
+app.use('/api', publicRouter);     // /api/health, /api/public/*
+app.use('/api/commander', commanderRouter); // Social Media Commander REST & MCP
+app.use('/mcp', commanderRouter);           // Direct /mcp mount
+
+// ─── Social Media Posting Proxy ───────────────────────────────────────
+app.post('/api/social/post', async (req, res) => {
+  const { platform, content, credentials } = req.body || {};
+  if (!platform || !content) return res.status(400).json({ error: 'platform and content required' });
+  
+  try {
+    let result = null;
+    
+    // Discord Webhook
+    if (platform.toLowerCase().includes('discord') && credentials?.webhook) {
+      const r = await fetch(credentials.webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        result = { platform, id: d.id, status: 'posted', url: `https://discord.com/channels/@me` };
+        // Try to delete if we got a message ID
+        if (d.id) {
+          const delUrl = credentials.webhook.replace(/\/webhooks\/.*/, `/messages/${d.id}`);
+          try { await fetch(delUrl, { method: 'DELETE' }); result.deleted = true; } catch {}
+        }
+      } else {
+        const err = await r.text();
+        result = { platform, status: 'failed', error: err.slice(0, 200) };
+      }
     }
-    cell += c;
+    // Twitter/X API v2
+    else if ((platform.toLowerCase().includes('twitter') || platform.toLowerCase().includes('x'))) {
+      const token = credentials?.bearer || credentials?.token;
+      if (!token) return res.status(400).json({ error: 'Twitter Bearer token required' });
+      const r = await fetch('https://api.twitter.com/2/tweets', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: content }),
+      });
+      const d = await r.json();
+      if (d.data?.id) {
+        result = { platform, id: d.data.id, status: 'posted', url: `https://x.com/i/status/${d.data.id}` };
+        try {
+          await fetch(`https://api.twitter.com/2/tweets/${d.data.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+          result.deleted = true;
+        } catch {}
+      } else {
+        result = { platform, status: 'failed', error: JSON.stringify(d).slice(0, 200) };
+      }
+    }
+    // Facebook Page (Meta Graph API)
+    else if (platform.toLowerCase().includes('facebook') && credentials?.pageToken) {
+      const r = await fetch(`https://graph.facebook.com/v19.0/${credentials.pageId}/feed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: content, access_token: credentials.pageToken }),
+      });
+      const d = await r.json();
+      if (d.id) {
+        result = { platform, id: d.id, status: 'posted', url: `https://facebook.com/${d.id}` };
+        try {
+          await fetch(`https://graph.facebook.com/v19.0/${d.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access_token: credentials.pageToken }) });
+          result.deleted = true;
+        } catch {}
+      } else {
+        result = { platform, status: 'failed', error: JSON.stringify(d).slice(0, 200) };
+      }
+    }
+    // Instagram (Meta Graph API)
+    else if (platform.toLowerCase().includes('instagram') && credentials?.igUserId) {
+      // Step 1: Create media container
+      const create = await fetch(`https://graph.facebook.com/v19.0/${credentials.igUserId}/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caption: content, access_token: credentials.pageToken || credentials.token }),
+      });
+      const container = await create.json();
+      if (!container.id) {
+        result = { platform, status: 'failed', error: JSON.stringify(container).slice(0, 200) };
+      } else {
+        // Step 2: Publish (Instagram needs 30s+ between create and publish for reels, but text-only is instant)
+        await new Promise(r => setTimeout(r, 2000));
+        const pub = await fetch(`https://graph.facebook.com/v19.0/${credentials.igUserId}/media_publish`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ creation_id: container.id, access_token: credentials.pageToken || credentials.token }),
+        });
+        const pubData = await pub.json();
+        if (pubData.id) {
+          result = { platform, id: pubData.id, status: 'posted', url: `https://instagram.com/p/IGMEDIA_${pubData.id}` };
+          try {
+            await fetch(`https://graph.facebook.com/v19.0/${pubData.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access_token: credentials.pageToken || credentials.token }) });
+            result.deleted = true;
+          } catch {}
+        } else {
+          result = { platform, status: 'failed', error: JSON.stringify(pubData).slice(0, 200) };
+        }
+      }
+    }
+    
+    if (!result) return res.status(400).json({ error: 'Unsupported platform or missing credentials' });
+    res.json({ ok: true, result });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
   }
-  row.push(cell);
-  if (row.some(x => x.trim())) rows.push(row);
-  if (!rows.length) return [];
-  const headers = rows.shift().map(h => h.trim().toLowerCase().replaceAll(' ', '_'));
-  return rows.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ''])));
-}
-const publicPlans = [
-  { id: 'free', name: 'Free Launch', price: '$0', jobs: 25, users: 3, proof: 'Basic GPS/photo proof', cta: 'Start free' },
-  { id: 'starter', name: 'Starter', price: '$19/mo', jobs: 250, users: 10, proof: 'GPS scoring, uploads, teams', cta: 'Upgrade' },
-  { id: 'pro', name: 'Pro', price: '$49/mo', jobs: 1500, users: 50, proof: 'Shopify, WooCommerce, reports', cta: 'Go Pro' },
-  { id: 'agency', name: 'Agency', price: '$149/mo', jobs: 10000, users: 250, proof: 'Multi-team, priority support', cta: 'Scale' },
-];
-const paymentProviders = ['stripe', 'paypal', 'square', 'venmo', 'cashapp'];
-const mapProviders = [
-  { id: 'openstreetmap', name: 'OpenStreetMap', apiKeyRequired: false },
-  { id: 'google', name: 'Google Maps', apiKeyRequired: true },
-  { id: 'mapbox', name: 'Mapbox', apiKeyRequired: true },
-  { id: 'here', name: 'HERE Maps', apiKeyRequired: true },
-  { id: 'bing', name: 'Bing Maps', apiKeyRequired: true },
-];
-
-function tenantId(req) { return req.user?.tenant_id || 'tenant-moveweight'; }
-function isDemoAccount(input) {
-  const user = input?.user || input || {};
-  return user.tenant_id === 'tenant-test-demo' || ['Test','TestManager','TestMember','TestClient'].includes(user.username);
-}
-function requireNotDemo(message = 'Demo accounts cannot change users, passwords, billing, owner settings, or API secrets.') {
-  return (req, res, next) => {
-    if (isDemoAccount(req)) return res.status(403).json({ error: message });
-    next();
-  };
-}
-function getPlanLimit(planId, field) {
-  return (publicPlans.find((p) => p.id === planId)?.[field]) ?? 0;
-}
-function enforceJobLimit(req, res) {
-  if (isOwnerSuperAdmin(req.user)) return true;
-  const tenant = row('SELECT * FROM tenants WHERE id=?', [tenantId(req)]);
-  const limit = getPlanLimit(tenant?.plan || 'free', 'jobs');
-  if (!limit) return true;
-  const count = row('SELECT COUNT(*) AS n FROM jobs WHERE tenant_id=?', [tenantId(req)])?.n || 0;
-  if (count >= limit) {
-    res.status(402).json({ error: `Plan limit reached: ${limit} jobs for ${tenant?.plan || 'free'} plan. Upgrade to continue.` });
-    return false;
+});
+app.post('/api/social/followers', async (req, res) => {
+  const { platform, token } = req.body || {};
+  if (!platform || !token) return res.status(400).json({ error: 'platform and token required' });
+  try {
+    let count = null;
+    const key = platform.toLowerCase();
+    // Twitter/X API v2
+    if (key.includes('twitter') || key.includes('x')) {
+      const r = await fetch(`https://api.twitter.com/2/users/me?user.fields=public_metrics`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (r.ok) { const d = await r.json(); count = d.data?.public_metrics?.followers_count; }
+    }
+    // YouTube (Google) API
+    else if (key.includes('youtube')) {
+      const r = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&mine=true`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (r.ok) { const d = await r.json(); count = d.items?.[0]?.statistics?.subscriberCount; }
+    }
+    // Discord API
+    else if (key.includes('discord')) {
+      const r = await fetch(`https://discord.com/api/v10/guilds/@me`, {
+        headers: { Authorization: `Bot ${token}` }
+      });
+      if (r.ok) { const d = await r.json(); count = d.approximate_member_count; }
+    }
+    // Reddit API
+    else if (key.includes('reddit')) {
+      const r = await fetch(`https://oauth.reddit.com/subreddits/mine/subscriber`, {
+        headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'Promote4.me/4.0' }
+      });
+      if (r.ok) { const d = await r.json(); count = d.data?.children?.[0]?.data?.subscribers; }
+    }
+    res.json({ ok: true, count: count ? Number(count) : null, platform });
+  } catch (err) {
+    res.json({ ok: false, count: null, platform, error: err.message });
   }
-  return true;
-}
-function tokenHash(token) { return crypto.createHash('sha256').update(token).digest('hex'); }
-function audit(req, event, metadata = {}) { try { run('INSERT INTO audit_events (id, tenant_id, user_id, event, ip, user_agent, metadata_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [publicId('audit'), req.user?.tenant_id || metadata.tenant_id || null, req.user?.id || metadata.user_id || null, event, req.ip || '', req.headers['user-agent'] || '', JSON.stringify(metadata), now()]); } catch {} }
-function requireRole(role) { return (req, res, next) => { if ((roleRank[req.user?.role] || 0) < (roleRank[role] || 0)) return res.status(403).json({ error: `${role} access required` }); next(); }; }
-function publicJob(idOrOrder) { return row('SELECT * FROM jobs WHERE id = ? OR order_number = ?', [idOrOrder, idOrOrder]); }
-function distanceFeet(lat1, lon1, lat2, lon2) { const R = 6371000, toRad = (v) => v * Math.PI / 180; const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1); const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2; return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 3.28084); }
-function scoreEvidence({ job, lat, lng, accuracyRadiusFeet }) { if (lat == null || lng == null || job.lat == null || job.lng == null) return { distance: null, score: 30, verdict: 'GPS missing', warnings: ['GPS was missing or unavailable. Evidence is saved, but reward/client approval should be manual.'] }; const distance = distanceFeet(Number(lat), Number(lng), Number(job.lat), Number(job.lng)); if (distance <= accuracyRadiusFeet) return { distance, score: Math.max(90, 100 - Math.round(distance / 25)), verdict: 'High confidence', warnings: [] }; if (distance <= accuracyRadiusFeet * 3) return { distance, score: 65, verdict: 'Medium confidence', warnings: [`GPS was ${distance} ft from the expected location.`] }; return { distance, score: 35, verdict: 'Low confidence', warnings: [`GPS was ${distance} ft from the expected location. Review before paying or approving.`] }; }
-function hydrateJob(job) { if (!job) return null; return { ...job, evidence: all('SELECT * FROM evidence WHERE job_id = ? ORDER BY created_at DESC', [job.id]).map((e) => ({ ...e, warnings: JSON.parse(e.warnings || '[]') })), history: all('SELECT * FROM job_history WHERE job_id = ? ORDER BY created_at DESC', [job.id]) }; }
-function updateTenantActivity(tid) { run('UPDATE tenants SET last_active_at=? WHERE id=?', [now(), tid]); }
-function seedDemoForTenant(tid, userId, companyName) {
-  const teamId = publicId('team');
-  run('INSERT INTO teams (id, tenant_id, name, description, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)', [teamId, tid, `${companyName} Demo Team`, 'Erase or edit this demo team when ready.', userId, now()]);
-  const memberId = publicId('member');
-  run('INSERT INTO team_members (id, tenant_id, team_id, user_id, full_name, email, phone, role, territory, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [memberId, tid, teamId, userId, 'Demo Field Member', '', '', 'Promoter / Driver', 'Downtown demo area', 'This demo member can be erased.', now()]);
-  const clientId = publicId('client');
-  run('INSERT INTO clients (id, tenant_id, name, email, phone, address, lat, lng, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [clientId, tid, 'Demo Coffee Shop', '', '', '302 E 4th St, Joplin, MO', 37.0878, -94.5107, 'Demo client. Erase when done testing.', now()]);
-  const jobId = `P4-DEMO-${Date.now().toString().slice(-5)}`;
-  run(`INSERT INTO jobs (id, tenant_id, team_id, client_id, assigned_to, type, title, order_number, source, customer_name, address, lat, lng, status, eta, reward_cents, instructions, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [jobId, tid, teamId, clientId, memberId, 'Team Promo', 'Demo flyer proof job', 'DEMO-ORDER', 'Demo', 'Demo Coffee Shop', '302 E 4th St, Joplin, MO', 37.0878, -94.5107, 'Assigned', 'Today', 1200, 'Upload a proof photo and let Promote4.me score GPS accuracy.', now(), now()]);
-  run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tid, jobId, userId, 'Demo job created for new account', now()]);
-}
-
-app.get('/api/health', (req, res) => res.json({ ok: true, product: 'Promote4.me', version: '2.9.1' }));
-app.get('/api/public/plans', (req, res) => res.json({ plans: publicPlans, providers: paymentProviders, mapProviders, authentikUrl: AUTHENTIK_URL }));
-app.get('/api/auth/authentik/url', (req, res) => { const redirectUri = `${APP_URL}/api/auth/authentik/callback`; const url = `${AUTHENTIK_URL}/application/o/authorize/?client_id=${encodeURIComponent(AUTHENTIK_CLIENT_ID)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid%20email%20profile`; res.json({ url }); });
-app.get('/api/auth/authentik/callback', (req, res) => res.redirect(`/?authentik=configure&code=${encodeURIComponent(req.query.code || '')}`));
-
-
-app.get('/api/public/map-jobs', (req, res) => {
-  const jobs = all("SELECT id,title,type,source,address,lat,lng,trade,budget_cents,work_mode,visibility,status,created_at FROM jobs WHERE COALESCE(is_public,0)=1 OR COALESCE(visibility,'private')='public' ORDER BY created_at DESC LIMIT 300");
-  const normalized = jobs.map((job) => ({
-    ...job,
-    lat: Number(job.lat || 37.0842),
-    lng: Number(job.lng || -94.5133),
-    available: !['Delivered','Verified','Rejected','Cancelled'].includes(job.status || ''),
-    taken: ['In Progress','Submitted','Delivered','Verified'].includes(job.status || ''),
-    reward: Number(job.budget_cents || job.reward_cents || 0)
-  }));
-  res.json({
-    ok: true,
-    version: '2.9.1',
-    counts: {
-      total: normalized.length,
-      available: normalized.filter((j) => j.available && !j.taken).length,
-      taken: normalized.filter((j) => j.taken).length,
-      online: normalized.filter((j) => j.work_mode === 'online').length,
-      inPerson: normalized.filter((j) => (j.work_mode || 'in_person') !== 'online').length
-    },
-    jobs: normalized
-  });
 });
 
-app.get('/api/public/beta-status', (req, res) => res.json({
-  ok: true,
-  version: '2.9.0',
-  goals: ['public map', 'available/taken jobs', 'in-person marketplace', 'online work queue', 'integration API tests', 'role/security audit'],
-  integrations: ['Shopify App Starter', 'WooCommerce Plugin', 'DoorDash profile', 'Grubhub profile', 'Uber Eats profile', 'Instacart profile', 'Shipt profile', 'Roadie profile', 'Walmart Spark profile', 'Amazon Flex profile', 'Custom Courier profile'],
-  securityRules: ['tenant isolation', 'demo safety', 'team-scoped approvals', 'manager/admin approval only', 'public applicant isolation']
-}));
+// ─── Smart SMM Hub proxy — aggregate rates from providers ────────────
+const SMM_PROVIDERS = {
+  justanotherpanel: 'https://justanotherpanel.com/api/v2',
+  smmheaven: 'https://smmheaven.com/api/v2',
+  smmraja: 'https://smmraja.com/api/v2',
+  morethanpanel: 'https://morethanpanel.com/api/v2',
+  perfectpanel: 'https://perfectpanel.com/api/v2',
+  smmflare: 'https://smmflare.com/api/v2',
+  smmfollows: 'https://smmfollows.com/api/v2',
+  nakrutka: 'https://nakrutka.com/api/v2',
+};
 
-
-app.get('/api/external-keys', requireAuth, requireRole('admin'), (req, res) => {
-  const keys = all('SELECT id,label,status,created_by,created_at,last_used_at FROM external_api_keys WHERE tenant_id=? ORDER BY created_at DESC', [tenantId(req)]);
-  res.json({ keys });
+app.post('/api/smm/services', async (req, res) => {
+  const { provider, key, email } = req.body || {};
+  if (!provider || !key) return res.status(400).json({ error: 'provider and key required' });
+  const baseUrl = SMM_PROVIDERS[provider];
+  if (!baseUrl) return res.status(400).json({ error: 'Unknown provider' });
+  try {
+    const r = await fetch(baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ key, action: 'services' }).toString(),
+    });
+    const d = await r.json();
+    res.json({ ok: true, provider, services: d.services || d, email });
+  } catch (err) {
+    res.json({ ok: false, provider, error: err.message });
+  }
 });
 
-app.post('/api/external-keys', requireAuth, requireRole('admin'), (req, res) => {
-  const label = req.body?.label || 'WooCommerce Store';
-  const raw = 'p4me_' + nanoid(40);
-  const id = publicId('apikey');
+// ─── Facebook / Instagram proxy ──────────────────────────────────────
+// Rate limit: max 2 posts per hour per page, min 5min between posts
+const POST_COOLDOWNS = {};
+const NATURAL_SCHEDULE = {}; // { pageId: { lastPost, count, nextSlot } }
 
-  run('INSERT INTO external_api_keys (id,tenant_id,label,key_hash,status,created_by,created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [
-    id, tenantId(req), label, tokenHash(raw), 'active', req.user.id, now()
-  ]);
-
-  audit(req, 'external_api_key_created', { key_id: id, label });
-  res.json({ id, label, apiKey: raw, note: 'Copy this key now. Promote4.me will not show it again.' });
-});
-
-app.delete('/api/external-keys/:id', requireAuth, requireRole('admin'), (req, res) => {
-  const existing = row('SELECT * FROM external_api_keys WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
-  if (!existing) return res.status(404).json({ error: 'API key not found.' });
-
-  run('UPDATE external_api_keys SET status=? WHERE id=? AND tenant_id=?', ['revoked', req.params.id, tenantId(req)]);
-  audit(req, 'external_api_key_revoked', { key_id: req.params.id });
-  res.json({ ok: true });
-});
-
-function p4meExternalKeyTenant(req) {
-  const raw = req.headers['x-p4me-key'] || req.headers['x-promote4me-key'] || '';
-  if (!raw) return null;
-  return row('SELECT * FROM external_api_keys WHERE key_hash=? AND status=?', [tokenHash(String(raw)), 'active']);
+function getPageToken(pageId) {
+  try {
+    const raw = fs.readFileSync('/opt/promote4me/app/data/fb_pages.json', 'utf8');
+    const pages = JSON.parse(raw).data || [];
+    return pages.find(p => p.id === pageId)?.access_token || null;
+  } catch { return null; }
 }
 
-app.post('/api/external/orders', (req, res) => {
-  const key = p4meExternalKeyTenant(req);
-  if (!key) return res.status(401).json({ error: 'Invalid or missing Promote4.me External API Key.' });
+function canPostNow(pageId) {
+  const last = POST_COOLDOWNS[pageId] || 0;
+  return Date.now() - last >= 5 * 60 * 1000; // 5 min cooldown
+}
 
-  const b = req.body || {};
-  const id = b.id || ('P4-EXT-' + Date.now().toString().slice(-6));
-  const team = row('SELECT id FROM teams WHERE tenant_id=? ORDER BY created_at DESC LIMIT 1', [key.tenant_id]);
-  const member = row('SELECT id FROM team_members WHERE tenant_id=? AND COALESCE(status,?) != ? ORDER BY created_at DESC LIMIT 1', [key.tenant_id, 'active', 'deleted']);
+function getNextNaturalSlot(pageId) {
+  // Natural spacing: 30-90 min between posts, max 3-5/day
+  const s = NATURAL_SCHEDULE[pageId] || { count: 0, lastPost: 0 };
+  const minGap = 30 * 60 * 1000; // 30 min minimum
+  const maxDaily = 5;
+  const elapsed = Date.now() - s.lastPost;
+  if (s.count >= maxDaily) return null; // daily cap
+  if (elapsed < minGap) return new Date(s.lastPost + minGap);
+  return new Date(); // ready now
+}
 
-  run('UPDATE external_api_keys SET last_used_at=? WHERE id=?', [now(), key.id]);
-
-  run('INSERT INTO jobs (id,tenant_id,team_id,assigned_to,type,title,order_number,source,customer_name,customer_email,customer_phone,address,lat,lng,status,eta,reward_cents,instructions,work_mode,visibility,is_public,trade,budget_cents,created_at,updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-    id,
-    key.tenant_id,
-    team?.id || null,
-    member?.id || null,
-    b.type || 'Package Delivery',
-    b.title || 'External Order',
-    b.order_number || '',
-    b.source || key.label || 'External API',
-    b.customer_name || '',
-    b.customer_email || '',
-    b.customer_phone || '',
-    b.address || '',
-    b.lat || null,
-    b.lng || null,
-    b.status || 'Assigned',
-    b.eta || '',
-    Number(b.reward_cents || 0),
-    b.instructions || 'Imported from external API. Upload GPS/photo proof before completion.',
-    b.work_mode || 'in_person',
-    b.visibility || 'private',
-    b.is_public ? 1 : 0,
-    b.trade || b.type || '',
-    Number(b.budget_cents || b.reward_cents || 0),
-    now(),
-    now()
-  ]);
-
-  run('INSERT INTO job_history (id,tenant_id,job_id,user_id,event,created_at) VALUES (?, ?, ?, ?, ?, ?)', [
-    publicId('hist'), key.tenant_id, id, null, 'External API order imported from ' + (b.source || key.label || 'External API'), now()
-  ]);
-
-  res.json({ ok: true, job: hydrateJob(row('SELECT * FROM jobs WHERE id=?', [id])) });
+app.get('/api/social/facebook/natural-status', (req, res) => {
+  const { pageId } = req.query;
+  if (!pageId) return res.json({ ok: false, error: 'pageId required' });
+  const slot = getNextNaturalSlot(pageId);
+  const s = NATURAL_SCHEDULE[pageId] || { count: 0 };
+  res.json({ ok: true, nextSlot: slot?.toISOString() || null, canPost: slot && slot <= new Date(), postsToday: s.count, maxDaily: 5, cooldown: canPostNow(pageId) });
 });
 
-app.post('/api/auth/register', async (req, res) => {
-  const { companyName, fullName, email, username, password, plan = 'free', role = 'admin' } = req.body || {};
-  if (!companyName || !fullName || !email || !username || !password) return res.status(400).json({ error: 'Company, name, email, username, and password are required.' });
-  if (row('SELECT id FROM users WHERE username = ? OR email = ?', [username, email])) return res.status(409).json({ error: 'Username or email already exists.' });
-  const tid = publicId('tenant'); const uid = publicId('user');
-  const deleteAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-  run('INSERT INTO tenants (id, name, plan, billing_email, status, last_active_at, delete_after_inactive_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [tid, companyName, plan, email, 'active', now(), deleteAt, now()]);
-  run('INSERT INTO users (id, tenant_id, username, email, password_hash, role, full_name, status, email_verified_at, created_at, last_active_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [uid, tid, username, email, await hashPassword(password), roleRank[role] ? role : 'admin', fullName, 'active', null, now(), now()]);
-  seedDemoForTenant(tid, uid, companyName);
-  const verifyToken = nanoid(32);
-  run('INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)', [publicId('emailtok'), uid, tokenHash(verifyToken), new Date(Date.now() + 48*3600*1000).toISOString(), now()]);
-  const user = row('SELECT * FROM users WHERE id = ?', [uid]);
-  audit({ headers: {}, ip: '' }, 'account_registered', { tenant_id: tid, user_id: uid, plan });
-  res.json({ token: signUser(user), user: getCurrentUser(uid), verifyUrl: `${APP_URL}/api/auth/verify-email?token=${verifyToken}`, message: 'Account created. Demo workspace is ready. Email verification URL returned for local email setup.' });
-});
-
-app.post('/api/auth/login', async (req, res) => { const { username, password } = req.body || {}; const user = row('SELECT * FROM users WHERE username = ? OR email = ?', [username, username]); if (!user || !(await verifyPassword(password || '', user.password_hash))) return res.status(401).json({ error: 'Invalid login' }); if (user.status !== 'active') return res.status(403).json({ error: 'Account disabled' }); run('UPDATE users SET last_login_at=?, last_active_at=? WHERE id=?', [now(), now(), user.id]); updateTenantActivity(user.tenant_id); audit({ ...req, user }, 'login_success'); res.json({ token: signUser(user), user: getCurrentUser(user.id) }); });
-app.post('/api/auth/request-reset', async (req, res) => { const user = row('SELECT * FROM users WHERE email = ? OR username = ?', [req.body?.email || '', req.body?.email || '']); if (user) { const token = nanoid(40); run('INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)', [publicId('resettok'), user.id, tokenHash(token), new Date(Date.now()+3600*1000).toISOString(), now()]); return res.json({ ok: true, resetUrl: `${APP_URL}/reset-password?token=${token}`, message: 'Reset link generated. Configure SMTP to send this automatically.' }); } res.json({ ok: true, message: 'If the account exists, a reset link was generated.' }); });
-app.post('/api/auth/reset-password', async (req, res) => { const { token, password } = req.body || {}; const found = all('SELECT * FROM password_reset_tokens WHERE used_at IS NULL').find((t) => t.token_hash === tokenHash(token || '') && new Date(t.expires_at) > new Date()); if (!found) return res.status(400).json({ error: 'Invalid or expired reset token.' }); const target = row('SELECT * FROM users WHERE id=?', [found.user_id]); if (isDemoAccount(target)) return res.status(403).json({ error: 'Demo accounts cannot reset passwords.' }); run('UPDATE users SET password_hash=?, status=? WHERE id=?', [await hashPassword(password), 'active', found.user_id]); run('UPDATE password_reset_tokens SET used_at=? WHERE id=?', [now(), found.id]); res.json({ ok: true }); });
-app.get('/api/auth/verify-email', (req, res) => { const found = all('SELECT * FROM email_verification_tokens WHERE used_at IS NULL').find((t) => t.token_hash === tokenHash(req.query.token || '') && new Date(t.expires_at) > new Date()); if (!found) return res.status(400).send('Invalid or expired verification token.'); run('UPDATE users SET email_verified_at=? WHERE id=?', [now(), found.user_id]); run('UPDATE email_verification_tokens SET used_at=? WHERE id=?', [now(), found.id]); res.send('Email verified. You can return to Promote4.me.'); });
-app.get('/api/me', requireAuth, (req, res) => res.json({ user: getCurrentUser(req.user.id) }));
-app.get('/api/training', requireAuth, (req, res) => res.json({
-  role: req.user.role,
-  demo: isDemoAccount(req.user),
-  modules: [
-    { id: 'quickstart', title: 'Quick Start', steps: ['Create a client/location', 'Create or sync a job', 'Assign a team member', 'Upload proof', 'Approve or reject evidence'] },
-    { id: 'proof', title: 'Proof Review', steps: ['Check GPS confidence', 'Review browser GPS and uploaded photo', 'Look for warnings', 'Approve only when proof matches location'] },
-    { id: 'integrations', title: 'Integrations', steps: ['Open Add-ons', 'Run demo sync', 'Add live API credentials when ready', 'Confirm connected status'] },
-    { id: 'roles', title: 'Roles and Access', steps: ['Super admin sees all product hierarchy', 'Admins see their company only', 'Managers run operations', 'Members upload proof', 'Clients view history'] }
-  ]
-}));
-
-app.get('/api/bootstrap', requireAuth, (req, res) => { const tid = tenantId(req); updateTenantActivity(tid); res.json({ tenant: row('SELECT * FROM tenants WHERE id = ?', [tid]), roles: Object.keys(roleRank), roleCatalog, fieldRoleCatalog, deliveryServices, plans: publicPlans, mapProviders, paymentProviders, users: all('SELECT id, username, email, role, full_name, phone, photo_url, status, email_verified_at, last_login_at FROM users WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), teams: all('SELECT * FROM teams WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), teamMembers: all('SELECT * FROM team_members WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), clients: all('SELECT * FROM clients WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), jobs: all('SELECT * FROM jobs WHERE tenant_id = ? ORDER BY created_at DESC', [tid]).map(hydrateJob), integrations: all('SELECT * FROM integrations WHERE tenant_id = ? ORDER BY created_at DESC', [tid]), audit: all('SELECT * FROM audit_events WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 100', [tid]) }); });
-app.get('/api/public/jobs/:id', (req, res) => { const job = publicJob(req.params.id); if (!job) return res.status(404).json({ error: 'Job not found' }); res.json({ job: hydrateJob(job) }); });
-
-app.post('/api/teams', requireAuth, requireRole('manager'), (req, res) => { const id = publicId('team'); const { name, description = '' } = req.body; run('INSERT INTO teams (id, tenant_id, name, description, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)', [id, tenantId(req), name, description, req.user.id, now()]); audit(req, 'team_created', { team_id: id }); res.json({ team: row('SELECT * FROM teams WHERE id = ?', [id]) }); });
-app.post('/api/users', requireAuth, requireRole('admin'), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), async (req, res) => {
-  const { username, email, password = 'ChangeMe123!', role = 'manager', full_name, phone = '' } = req.body;
-  let requestedRole = roleRank[role] ? role : 'manager';
-  if (requestedRole === 'super_admin' && !isOwnerSuperAdmin(req.user)) {
-    return res.status(403).json({ error: 'Only Wade / Promote4.me owner can create super admins.' });
+app.post('/api/social/facebook/natural-post', async (req, res) => {
+  const { pageId, message } = req.body || {};
+  if (!pageId || !message) return res.status(400).json({ error: 'pageId and message required' });
+  
+  const slot = getNextNaturalSlot(pageId);
+  if (!slot) return res.json({ ok: false, error: 'Daily post limit reached (5/5)' });
+  if (slot > new Date()) {
+    const waitMins = Math.ceil((slot - Date.now()) / 60000);
+    return res.json({ ok: false, error: `Next natural slot in ~${waitMins} min` });
   }
-  if (requestedRole === 'admin' && req.user.role !== 'super_admin') requestedRole = 'manager';
-  const id = publicId('user');
-  run('INSERT INTO users (id, tenant_id, username, email, password_hash, role, full_name, phone, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, tenantId(req), username, email, await hashPassword(password), requestedRole, full_name, phone, now()]);
-  audit(req, 'user_created', { target_user_id: id, role: requestedRole });
-  res.json({ user: getCurrentUser(id), tempPassword: password });
-});
-app.patch('/api/users/:id/role', requireAuth, requireRole('admin'), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), (req, res) => {
-  const { role } = req.body;
-  if (!roleRank[role]) return res.status(400).json({ error: 'Invalid role.' });
-  const target = row('SELECT * FROM users WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
-  if (!target) return res.status(404).json({ error: 'User not found.' });
-  if ((role === 'super_admin' || target.role === 'super_admin') && !isOwnerSuperAdmin(req.user)) {
-    return res.status(403).json({ error: 'Only Wade / Promote4.me owner can manage super admins.' });
+  
+  const ptoken = getPageToken(pageId);
+  if (!ptoken) return res.json({ ok: false, error: 'Page token not found' });
+  
+  // Human-like random delay before posting (3-15 seconds)
+  await new Promise(r => setTimeout(r, 3000 + Math.random() * 12000));
+  
+  try {
+    const r = await fetch(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, access_token: ptoken }),
+    });
+    const d = await r.json();
+    if (!d.id) return res.json({ ok: false, error: JSON.stringify(d).slice(0, 200) });
+    
+    POST_COOLDOWNS[pageId] = Date.now();
+    NATURAL_SCHEDULE[pageId] = {
+      lastPost: Date.now(),
+      count: (NATURAL_SCHEDULE[pageId]?.count || 0) + 1,
+    };
+    res.json({ ok: true, id: d.id, pageId, remaining: 5 - NATURAL_SCHEDULE[pageId].count });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
   }
-  run('UPDATE users SET role=? WHERE id=? AND tenant_id=?', [role, req.params.id, tenantId(req)]);
-  audit(req, 'user_role_changed', { target_user_id: req.params.id, role });
-  res.json({ user: getCurrentUser(req.params.id) });
-});
-app.post('/api/team-members', requireAuth, requireRole('manager'), upload.single('photo'), (req, res) => { const id = publicId('member'); const photoUrl = req.file ? `/uploads/${req.file.filename}` : req.body.photo_url || ''; const b = req.body; run(`INSERT INTO team_members (id, tenant_id, team_id, full_name, email, phone, role, pay_rate, territory, photo_url, emergency_contact, notes, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [id, tenantId(req), b.team_id, b.full_name, b.email || '', b.phone || '', b.role || 'Member', b.pay_rate || '', b.territory || '', photoUrl, b.emergency_contact || '', b.notes || '', b.status || 'active', now()]); res.json({ member: row('SELECT * FROM team_members WHERE id = ?', [id]) }); });
-
-app.get('/api/crm/catalog', requireAuth, (req, res) => {
-  res.json({ roleCatalog, fieldRoleCatalog, deliveryServices });
 });
 
-app.get('/api/team-members/export.csv', requireAuth, requireRole('manager'), (req, res) => {
-  const rows = all('SELECT full_name,email,phone,role,pay_rate,territory,emergency_contact,notes,status,created_at FROM team_members WHERE tenant_id=? ORDER BY full_name', [tenantId(req)]);
-  const headers = ['full_name','email','phone','role','pay_rate','territory','emergency_contact','notes','status','created_at'];
-  const csv = [headers.join(','), ...rows.map(r => headers.map(h => csvEscape(r[h])).join(','))].join('\n');
-  audit(req, 'team_members_exported', { count: rows.length });
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="promote4me-team-members.csv"');
-  res.send(csv);
+// ─── Instagram (browser-based, bypasses API permissions) ─────────────
+app.post('/api/social/instagram/natural', async (req, res) => {
+  // Post via Instagram web interface using user's existing session
+  // Instagram blocks headless login so this opens their browser
+  const url = `https://www.instagram.com/?create_post&caption=${encodeURIComponent(req.body?.message || '')}`;
+  res.json({ ok: true, url, method: 'instagram-web', instructions: 'Click the link to open Instagram. Paste caption. Click Share.' });
 });
+// Uses rotating proxies + real browser fingerprint to look human
+const NATURAL_PROXIES = []; // Add proxies here: 'user:pass@ip:port'
 
-app.post('/api/team-members/import', requireAuth, requireRole('manager'), (req, res) => {
-  const { csv, team_id } = req.body || {};
-  if (!csv) return res.status(400).json({ error: 'CSV text is required.' });
-  const teamId = team_id || row('SELECT id FROM teams WHERE tenant_id=? ORDER BY created_at LIMIT 1', [tenantId(req)])?.id;
-  if (!teamId) return res.status(400).json({ error: 'Create a team before importing members.' });
-  const rows = parseCsv(csv);
-  let imported = 0, skipped = 0;
-  for (const r of rows) {
-    const fullName = r.full_name || r.name || r.member || '';
-    if (!fullName.trim()) { skipped++; continue; }
-    const id = publicId('member');
-    run(`INSERT INTO team_members (id, tenant_id, team_id, full_name, email, phone, role, pay_rate, territory, emergency_contact, notes, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
-      id, tenantId(req), teamId, fullName.trim(), r.email || '', r.phone || '', r.role || 'Field Member',
-      r.pay_rate || '', r.territory || '', r.emergency_contact || '', r.notes || '', r.status || 'active', now()
-    ]);
-    imported++;
+app.post('/api/social/facebook/natural', async (req, res) => {
+  const { pageId, message } = req.body || {};
+  if (!pageId || !message) return res.status(400).json({ error: 'pageId and message required' });
+  
+  const ptoken = getPageToken(pageId);
+  if (!ptoken) return res.json({ ok: false, error: 'Page token not found' });
+  
+  try {
+    // Pick random proxy
+    const proxy = NATURAL_PROXIES.length > 0 
+      ? NATURAL_PROXIES[Math.floor(Math.random() * NATURAL_PROXIES.length)]
+      : null;
+    
+    // Random User-Agent rotation
+    const UAs = [
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 Safari/605.1.15',
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
+    ];
+    const ua = UAs[Math.floor(Math.random() * UAs.length)];
+    
+    // Human-like delay before posting
+    const delay = 5000 + Math.random() * 15000;
+    await new Promise(r => setTimeout(r, delay));
+    
+    // Post via Graph API with natural-looking headers
+    const r = await fetch(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': ua,
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': `https://www.facebook.com/${pageId}`,
+      },
+      body: JSON.stringify({ message, access_token: ptoken }),
+      // @ts-ignore — proxy support
+      ...(proxy ? { agent: new (await import('https')).Agent({ proxy: { host: proxy.split('@')[1]?.split(':')[0], port: parseInt(proxy.split(':').pop()) } }) } : {}),
+    });
+    const d = await r.json();
+    
+    POST_COOLDOWNS[pageId] = Date.now();
+    NATURAL_SCHEDULE[pageId] = {
+      lastPost: Date.now(),
+      count: (NATURAL_SCHEDULE[pageId]?.count || 0) + 1,
+    };
+    
+    res.json({ 
+      ok: true, id: d.id, pageId, 
+      remaining: 5 - (NATURAL_SCHEDULE[pageId]?.count || 0),
+      method: 'natural-api',
+      delay_used: Math.round(delay/1000) + 's',
+      proxy: proxy ? proxy.split('@')[1] : 'none',
+      ua: ua.split(' ').slice(-1)[0],
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
   }
-  audit(req, 'team_members_imported', { imported, skipped });
-  res.json({ imported, skipped });
 });
+setInterval(() => { const now = new Date(); if (now.getHours() === 0 && now.getMinutes() < 5) Object.keys(NATURAL_SCHEDULE).forEach(k => NATURAL_SCHEDULE[k].count = 0); }, 300000);
 
-app.patch('/api/team-members/:id', requireAuth, requireRole('manager'), upload.single('photo'), (req, res) => {
-  const existing = row('SELECT * FROM team_members WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
-  if (!existing) return res.status(404).json({ error: 'Team member not found.' });
-  const b = { ...existing, ...req.body };
-  const photoUrl = req.file ? `/uploads/${req.file.filename}` : b.photo_url || existing.photo_url || '';
-  run(`UPDATE team_members SET team_id=?, full_name=?, email=?, phone=?, role=?, pay_rate=?, territory=?, photo_url=?, emergency_contact=?, notes=?, status=? WHERE id=? AND tenant_id=?`, [
-    b.team_id || existing.team_id, b.full_name, b.email || '', b.phone || '', b.role || 'Field Member',
-    b.pay_rate || '', b.territory || '', photoUrl, b.emergency_contact || '', b.notes || '', b.status || 'active',
-    req.params.id, tenantId(req)
-  ]);
-  audit(req, 'team_member_updated', { member_id: req.params.id });
-  res.json({ member: row('SELECT * FROM team_members WHERE id=?', [req.params.id]) });
-});
-
-app.delete('/api/team-members/:id', requireAuth, requireRole('manager'), (req, res) => {
-  const existing = row('SELECT * FROM team_members WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
-  if (!existing) return res.status(404).json({ error: 'Team member not found.' });
-  run('UPDATE team_members SET status=? WHERE id=? AND tenant_id=?', ['deleted', req.params.id, tenantId(req)]);
-  audit(req, 'team_member_deleted', { member_id: req.params.id });
-  res.json({ ok: true });
-});
-
-app.patch('/api/users/:id', requireAuth, requireRole('admin'), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), async (req, res) => {
-  const target = row('SELECT * FROM users WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
-  if (!target) return res.status(404).json({ error: 'User not found.' });
-  if (target.role === 'super_admin' && !isOwnerSuperAdmin(req.user)) {
-    return res.status(403).json({ error: 'Only Wade / Promote4.me owner can edit super admins.' });
+app.get('/api/social/facebook/pages', async (req, res) => {
+  const tenantId = req.user?.tenant_id || req.query.tenant || 'default';
+  const filePath = `/opt/promote4me/app/data/tenants/${tenantId}/fb_pages.json`;
+  try {
+    const fs = await import('fs');
+    // Check tenant-specific file first, fall back to default
+    let raw;
+    try { raw = fs.readFileSync(filePath, 'utf8'); } catch {
+      raw = fs.readFileSync('/opt/promote4me/app/data/fb_pages.json', 'utf8');
+    }
+    res.json({ ok: true, pages: JSON.parse(raw).data || [], tenant: tenantId });
+  } catch (e) {
+    res.json({ ok: false, pages: [], error: e.message, tenant: tenantId });
   }
-  const b = { ...target, ...req.body };
-  let nextRole = roleRank[b.role] ? b.role : target.role;
-  if ((nextRole === 'super_admin' || target.role === 'super_admin') && !isOwnerSuperAdmin(req.user)) {
-    return res.status(403).json({ error: 'Only Wade / Promote4.me owner can manage super admins.' });
+});
+
+app.post('/api/social/facebook/post', async (req, res) => {
+  const { pageId, message } = req.body || {};
+  if (!pageId || !message) return res.status(400).json({ error: 'pageId and message required' });
+  
+  const ptoken = getPageToken(pageId);
+  if (!ptoken) return res.status(400).json({ error: 'Page token not found' });
+  
+  if (!canPostNow(pageId)) {
+    const secs = Math.ceil(((5 * 60 * 1000) - (Date.now() - POST_COOLDOWNS[pageId])) / 1000);
+    return res.json({ ok: false, error: `Rate limited — ${secs}s remaining before next post` });
   }
-  run('UPDATE users SET username=?, email=?, role=?, full_name=?, phone=?, status=? WHERE id=? AND tenant_id=?', [
-    b.username, b.email, nextRole, b.full_name, b.phone || '', b.status || 'active', req.params.id, tenantId(req)
-  ]);
-  if (req.body.password) run('UPDATE users SET password_hash=? WHERE id=? AND tenant_id=?', [await hashPassword(req.body.password), req.params.id, tenantId(req)]);
-  audit(req, 'user_updated', { target_user_id: req.params.id });
-  res.json({ user: getCurrentUser(req.params.id) });
+  
+  try {
+    const r = await fetch(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, access_token: ptoken }),
+    });
+    const d = await r.json();
+    POST_COOLDOWNS[pageId] = Date.now();
+    res.json({ ok: true, id: d.id, pageId });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
 });
 
-app.delete('/api/users/:id', requireAuth, requireRole('admin'), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), (req, res) => {
-  const target = row('SELECT * FROM users WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]);
-  if (!target) return res.status(404).json({ error: 'User not found.' });
-  if (target.role === 'super_admin' || target.id === req.user.id) return res.status(403).json({ error: 'Cannot delete this account.' });
-  run('UPDATE users SET status=? WHERE id=? AND tenant_id=?', ['deleted', req.params.id, tenantId(req)]);
-  audit(req, 'user_deleted', { target_user_id: req.params.id });
-  res.json({ ok: true });
+app.delete('/api/social/facebook/post/:postId', async (req, res) => {
+  const { postId } = req.params;
+  const { pageId } = req.query;
+  const ptoken = getPageToken(pageId);
+  if (!ptoken) return res.status(400).json({ error: 'Page token not found' });
+  
+  try {
+    await fetch(`https://graph.facebook.com/v19.0/${postId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: ptoken }),
+    });
+    res.json({ ok: true, deleted: true });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+app.get('/api/social/facebook/auth', (req, res) => {
+  const fbAppId = '3998214203775169';
+  const redirectUri = 'https://promote4.me/api/social/facebook/callback';
+  const scope = 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish';
+  const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${fbAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=token`;
+  res.json({ url });
 });
 
-
-app.post('/api/clients', requireAuth, requireRole('manager'), (req, res) => { const id = publicId('client'); const b = req.body; run('INSERT INTO clients (id, tenant_id, name, email, phone, address, lat, lng, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, tenantId(req), b.name, b.email || '', b.phone || '', b.address || '', b.lat || null, b.lng || null, b.notes || '', now()]); res.json({ client: row('SELECT * FROM clients WHERE id = ?', [id]) }); });
-app.patch('/api/clients/:id', requireAuth, requireRole('manager'), (req, res) => { const existing = row('SELECT * FROM clients WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]); if (!existing) return res.status(404).json({ error: 'Client not found.' }); const b = { ...existing, ...req.body }; run('UPDATE clients SET name=?, email=?, phone=?, address=?, lat=?, lng=?, notes=?, status=? WHERE id=? AND tenant_id=?', [b.name, b.email || '', b.phone || '', b.address || '', b.lat || null, b.lng || null, b.notes || '', b.status || 'active', req.params.id, tenantId(req)]); audit(req, 'client_updated', { client_id: req.params.id }); res.json({ client: row('SELECT * FROM clients WHERE id=?', [req.params.id]) }); });
-app.delete('/api/clients/:id', requireAuth, requireRole('manager'), (req, res) => { const existing = row('SELECT * FROM clients WHERE id=? AND tenant_id=?', [req.params.id, tenantId(req)]); if (!existing) return res.status(404).json({ error: 'Client not found.' }); run('UPDATE clients SET status=? WHERE id=? AND tenant_id=?', ['deleted', req.params.id, tenantId(req)]); audit(req, 'client_deleted', { client_id: req.params.id }); res.json({ ok: true }); });
-app.post('/api/integrations/simulate/:provider', requireAuth, requireRole('manager'), (req, res) => {
-  const provider = String(req.params.provider || 'Promote4.me Direct').replaceAll('-', ' ');
-  const tid = tenantId(req);
-  if (!enforceJobLimit(req, res)) return;
-  const team = row('SELECT id FROM teams WHERE tenant_id=? ORDER BY created_at DESC LIMIT 1', [tid]);
-  const member = row('SELECT id FROM team_members WHERE tenant_id=? AND status != ? ORDER BY created_at DESC LIMIT 1', [tid, 'deleted']);
-  const client = row('SELECT * FROM clients WHERE tenant_id=? AND COALESCE(status, ?) != ? ORDER BY created_at DESC LIMIT 1', [tid, 'active', 'deleted']);
-  const id = `P4-SYNC-${Date.now().toString().slice(-6)}`;
-  const orderNumber = `${provider.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}-${Date.now().toString().slice(-5)}`;
-  run(`INSERT INTO jobs (id, tenant_id, team_id, client_id, assigned_to, type, title, order_number, source, customer_name, customer_email, customer_phone, address, lat, lng, status, eta, reward_cents, instructions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [id, tid, team?.id || null, client?.id || null, member?.id || null, provider.match(/uber|door|grub/i) ? 'Food Delivery' : 'Package Delivery', `${provider} synced demo order`, orderNumber, provider, client?.name || 'Demo Customer', client?.email || 'demo-customer@promote4.me', client?.phone || '(555) 600-0000', client?.address || '302 E 4th St, Joplin, MO', client?.lat || 37.0878, client?.lng || -94.5107, 'Assigned', 'Synced just now', 1000, `Simulated ${provider} API sync. Add live credentials in Integrations to turn this into production sync.`, now(), now()]);
-  run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tid, id, req.user.id, `${provider} demo sync created job`, now()]);
-  audit(req, 'integration_demo_sync', { provider, job_id: id });
-  res.json({ ok: true, provider, job: hydrateJob(row('SELECT * FROM jobs WHERE id=?', [id])) });
+app.get('/api/social/facebook/callback', (req, res) => {
+  res.send(`<html><body><script>if(window.location.hash){fetch('/api/social/facebook/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hash:window.location.hash})}).then(r=>r.json()).then(d=>{localStorage.setItem('fb_token_data',JSON.stringify(d));window.close();});}</script><p>Authorizing... close this window.</p></body></html>`);
 });
-app.post('/api/jobs', requireAuth, requireRole('manager'), (req, res) => { if (!enforceJobLimit(req, res)) return; const id = req.body.id || `P4-${Date.now().toString().slice(-6)}`; const b = req.body; run(`INSERT INTO jobs (id, tenant_id, team_id, client_id, assigned_to, type, title, order_number, source, customer_name, customer_email, customer_phone, address, lat, lng, status, eta, reward_cents, instructions, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [id, tenantId(req), b.team_id || null, b.client_id || null, b.assigned_to || null, b.type, b.title, b.order_number || '', b.source || 'Manual', b.customer_name || '', b.customer_email || '', b.customer_phone || '', b.address, b.lat || null, b.lng || null, b.status || 'Assigned', b.eta || '', Number(b.reward_cents || 0), b.instructions || '', now(), now()]); run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tenantId(req), id, req.user.id, 'Job created', now()]); res.json({ job: hydrateJob(row('SELECT * FROM jobs WHERE id = ?', [id])) }); });
-app.patch('/api/jobs/:id', requireAuth, requireRole('manager'), (req, res) => { const b = req.body; const job = row('SELECT * FROM jobs WHERE id = ? AND tenant_id = ?', [req.params.id, tenantId(req)]); if (!job) return res.status(404).json({ error: 'Job not found' }); const next = { ...job, ...b, updated_at: now() }; run(`UPDATE jobs SET team_id=?, client_id=?, assigned_to=?, type=?, title=?, order_number=?, source=?, customer_name=?, customer_email=?, customer_phone=?, address=?, lat=?, lng=?, status=?, eta=?, reward_cents=?, instructions=?, updated_at=? WHERE id=?`, [next.team_id, next.client_id, next.assigned_to, next.type, next.title, next.order_number, next.source, next.customer_name, next.customer_email, next.customer_phone, next.address, next.lat, next.lng, next.status, next.eta, next.reward_cents, next.instructions, next.updated_at, job.id]); run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tenantId(req), job.id, req.user.id, `Job updated: ${b.status || 'details changed'}`, now()]); res.json({ job: hydrateJob(row('SELECT * FROM jobs WHERE id = ?', [job.id])) }); });
-app.post('/api/jobs/:id/evidence', requireAuth, upload.single('photo'), (req, res) => { const job = row('SELECT * FROM jobs WHERE id = ? AND tenant_id = ?', [req.params.id, tenantId(req)]); if (!job) return res.status(404).json({ error: 'Job not found' }); const tenant = row('SELECT * FROM tenants WHERE id = ?', [tenantId(req)]); const chosenLat = req.body.browser_lat || req.body.image_lat || null; const chosenLng = req.body.browser_lng || req.body.image_lng || null; const scored = scoreEvidence({ job, lat: chosenLat, lng: chosenLng, accuracyRadiusFeet: tenant.accuracy_radius_feet }); const id = publicId('ev'); run(`INSERT INTO evidence (id, tenant_id, job_id, user_id, file_url, file_name, note, browser_lat, browser_lng, browser_accuracy_meters, image_lat, image_lng, chosen_lat, chosen_lng, distance_feet, score, verdict, warnings, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [id, tenantId(req), job.id, req.user.id, req.file ? `/uploads/${req.file.filename}` : '', req.file?.originalname || '', req.body.note || '', req.body.browser_lat || null, req.body.browser_lng || null, req.body.browser_accuracy_meters || null, req.body.image_lat || null, req.body.image_lng || null, chosenLat, chosenLng, scored.distance, scored.score, scored.verdict, JSON.stringify(scored.warnings), now()]); run('UPDATE jobs SET status=?, updated_at=? WHERE id=?', ['Submitted', now(), job.id]); run('INSERT INTO job_history (id, tenant_id, job_id, user_id, event, created_at) VALUES (?, ?, ?, ?, ?, ?)', [publicId('hist'), tenantId(req), job.id, req.user.id, `Evidence submitted: ${scored.verdict}`, now()]); res.json({ evidence: row('SELECT * FROM evidence WHERE id = ?', [id]), job: hydrateJob(row('SELECT * FROM jobs WHERE id = ?', [job.id])) }); });
 
-app.patch('/api/settings', requireAuth, requireRole('admin'), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), requireNotDemo(), (req, res) => { const b = req.body; run('UPDATE tenants SET name=?, plan=?, google_maps_api_key=?, accuracy_radius_feet=?, require_gps_for_rewards=?, map_provider=?, billing_email=? WHERE id=?', [b.name, b.plan, b.google_maps_api_key || '', Number(b.accuracy_radius_feet || 350), b.require_gps_for_rewards ? 1 : 0, b.map_provider || 'openstreetmap', b.billing_email || '', tenantId(req)]); res.json({ tenant: row('SELECT * FROM tenants WHERE id=?', [tenantId(req)]) }); });
-app.post('/api/billing/checkout', requireAuth, requireRole('admin'), (req, res) => { const { provider = 'stripe', plan = 'pro' } = req.body || {}; if (!paymentProviders.includes(provider)) return res.status(400).json({ error: 'Unsupported provider.' }); const planObj = publicPlans.find((p) => p.id === plan) || publicPlans[0]; const id = publicId('bill'); const checkoutUrl = `${APP_URL}/billing/${provider}?plan=${encodeURIComponent(plan)}&checkout=${id}`; run('INSERT INTO billing_events (id, tenant_id, provider, plan, amount_cents, status, checkout_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [id, tenantId(req), provider, plan, plan === 'starter' ? 1900 : plan === 'pro' ? 4900 : plan === 'agency' ? 14900 : 0, 'created', checkoutUrl, now()]); res.json({ checkoutUrl, provider, plan: planObj, message: 'Provider checkout placeholder created. Add live API keys to take real payments.' }); });
-app.post('/api/admin/cleanup-inactive', requireAuth, requireRole('super_admin'), (req, res) => { const cutoff = new Date(Date.now() - 365*24*60*60*1000).toISOString(); const stale = all("SELECT id FROM tenants WHERE status='active' AND COALESCE(last_active_at, created_at) < ? AND plan='free'", [cutoff]); for (const t of stale) run("UPDATE tenants SET status='inactive_pending_delete', delete_after_inactive_at=? WHERE id=?", [new Date(Date.now()+30*24*60*60*1000).toISOString(), t.id]); res.json({ marked: stale.length, message: 'Free inactive tenants marked for deletion grace period.' }); });
-app.post('/api/webhooks/shopify/order', (req, res) => res.json({ ok: true, note: 'Shopify webhook accepted placeholder. Configure secret verification before live merchant launch.' }));
-app.post('/api/webhooks/woocommerce/order', (req, res) => res.json({ ok: true, note: 'WooCommerce plugin can POST orders here after API key setup.' }));
-app.use((req, res, next) => { if (req.path.startsWith('/api/')) return next(); res.sendFile(path.join(__dirname, '..', 'dist', 'index.html')); });
-app.listen(PORT, '0.0.0.0', () => console.log(`Promote4.me API running on ${PORT}`));
+app.post('/api/social/facebook/token', async (req, res) => {
+  try {
+    const hash = req.body.hash?.replace('#','');
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    if (!accessToken) return res.json({ ok: false, error: 'No token in hash' });
+    
+    // Get pages
+    const pagesRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}`);
+    const pages = await pagesRes.json();
+    
+    // Get Instagram business accounts
+    let igAccounts = [];
+    for (const page of (pages.data || [])) {
+      const igRes = await fetch(`https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account&access_token=${accessToken}`);
+      const igData = await igRes.json();
+      if (igData.instagram_business_account) {
+        igAccounts.push({ pageId: page.id, pageName: page.name, igUserId: igData.instagram_business_account.id, pageToken: page.access_token });
+      }
+    }
+    
+    res.json({ ok: true, accessToken, pages: pages.data || [], igAccounts });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ─── Smart SMM Hub proxy — aggregate rates ──────────────────────────
+app.get('/api/smm/rates', async (req, res) => {
+  try {
+    const fs = await import('fs');
+    const dir = '/opt/promote4me/app/data/smm';
+    const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && f !== 'aggregated.json');
+    const results = {};
+    for (const file of files) {
+      const provider = file.replace('.json', '');
+      try { results[provider] = JSON.parse(fs.readFileSync(dir + '/' + file, 'utf8')); } catch { results[provider] = []; }
+    }
+    res.json({ ok: true, results, providers: Object.keys(results) });
+  } catch {
+    res.json({ ok: true, results: {}, providers: ['justanotherpanel','smmraja','morethanpanel','smmflare'] });
+  }
+})
+
+// ─── SPA fallback ─────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+});
+
+// ─── Start ────────────────────────────────────────────────────────────
+const PORT = config.port;
+
+app.listen(PORT, '0.0.0.0', () => {
+  startCommanderScheduler();
+  console.log(`Social Media Commander MCP: http://localhost:${PORT}/api/commander/mcp`);
+  console.log(`Promote4.me v${pkg.version} running on port ${PORT}`);
+  console.log(`API: http://localhost:${PORT}/api/health`);
+});
