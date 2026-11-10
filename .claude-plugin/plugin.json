@@ -1,0 +1,26 @@
+{
+  "name": "promote4me-commander",
+  "version": "1.0.0",
+  "description": "Social Media Commander for automated scheduling, calendar, comment management, and growth campaigns across Reddit, Facebook, Instagram, Twitter/X, Discord, YouTube, TikTok.",
+  "keywords": [
+    "social-media",
+    "reddit",
+    "instagram",
+    "twitter",
+    "facebook",
+    "discord",
+    "youtube",
+    "tiktok",
+    "automation",
+    "mcp",
+    "marketing",
+    "followliker",
+    "massplanner"
+  ],
+  "author": {
+    "name": "Promote4.me",
+    "url": "https://promote4.me"
+  },
+  "homepage": "https://promote4.me",
+  "repository": "https://github.com/BlizzHacker/Promote4me"
+}
