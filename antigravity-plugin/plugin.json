@@ -1,0 +1,29 @@
+{
+  "name": "promote4me-commander",
+  "displayName": "Promote4.me Social Media Commander",
+  "description": "Multi-platform AI social commander: automate and calendar posts, track & reply to comments on Reddit, Facebook, Instagram, Twitter/X, Discord, YouTube, and manage FollowLiker/MassPlanner growth campaigns.",
+  "version": "4.0.0",
+  "author": "Promote4.me",
+  "homepage": "https://promote4.me",
+  "categories": [
+    "social-media",
+    "automation",
+    "marketing",
+    "productivity"
+  ],
+  "keywords": [
+    "reddit",
+    "instagram",
+    "facebook",
+    "twitter",
+    "massplanner",
+    "followliker",
+    "social-media",
+    "mcp"
+  ],
+  "suggestedPrompts": [
+    "Check my connected social accounts and remaining daily limits",
+    "Schedule a multi-platform post for the next natural human time slot",
+    "Review recent Reddit comments and draft replies to prospective users"
+  ]
+}

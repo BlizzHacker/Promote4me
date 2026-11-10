@@ -1,0 +1,14 @@
+{
+  "name": "promote4me-social-commander",
+  "displayName": "Promote4.me Social Media Commander",
+  "description": "Multi-platform AI social media automation, scheduling, comments, and growth for Hermes agents.",
+  "version": "4.0.0",
+  "author": "Promote4.me",
+  "toolType": "mcp",
+  "transport": "http",
+  "url": "https://promote4.me/api/commander/mcp",
+  "localUrl": "http://192.168.0.151/api/commander/mcp",
+  "stdioCommand": "node bin/commander-mcp.js",
+  "skills": ["social-commander"],
+  "categories": ["social-media", "growth-automation"]
+}

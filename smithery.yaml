@@ -1,0 +1,43 @@
+# Smithery.ai MCP Registry Manifest for Claude Desktop & Claude Code
+name: "@blizzhacker/promote4me-social-commander"
+displayName: "Promote4.me Social Media Commander"
+description: "Multi-platform AI social media automation, calendar scheduling, comment tracking, auto-replies, and growth campaigns for Reddit, Facebook, Instagram, Twitter/X, Discord, YouTube, TikTok."
+version: "4.0.0"
+runtime: "node"
+license: "MIT"
+repository: "https://github.com/BlizzHacker/Promote4me"
+icon: "https://promote4.me/logo.svg"
+categories:
+  - "social-media"
+  - "automation"
+  - "productivity"
+  - "marketing"
+
+# Transport configurations
+startCommand:
+  type: "http"
+  url: "https://promote4.me/api/commander/mcp"
+
+stdio:
+  command: "node"
+  args: ["bin/commander-mcp.js"]
+
+tools:
+  - name: "social_list_accounts"
+    description: "List all connected social media accounts with follower counts and remaining daily limits."
+  - name: "social_post_now"
+    description: "Immediately broadcast a post or thread with optional media URLs."
+  - name: "social_schedule_post"
+    description: "Schedule a post for a specific datetime or optimal natural human slot with jitter."
+  - name: "social_get_calendar"
+    description: "Retrieve social calendar schedule, queue, and published posts."
+  - name: "social_get_comments"
+    description: "Fetch comments across platforms for moderation or response."
+  - name: "social_reply_comment"
+    description: "Post a reply to a comment on Reddit, Facebook, Instagram, etc."
+  - name: "social_send_message"
+    description: "Send direct message or reply to customer/follower."
+  - name: "social_start_campaign"
+    description: "Launch FollowLiker / MassPlanner style automated audience growth campaigns."
+  - name: "social_check_limits"
+    description: "Inspect platform daily quotas, cooldowns, and anti-ban safeguards."

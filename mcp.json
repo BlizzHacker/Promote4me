@@ -1,0 +1,37 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/server.json",
+  "name": "@blizzhacker/promote4me-social-commander",
+  "title": "Promote4.me Social Media Commander",
+  "description": "Multi-platform AI social media automation, calendar scheduling, comment tracking, auto-replies, and growth campaigns for Reddit, Facebook, Instagram, Twitter/X, Discord, YouTube, TikTok.",
+  "version": "4.0.0",
+  "homepage": "https://promote4.me",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlizzHacker/Promote4me.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BlizzHacker/Promote4me/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "social-media",
+    "claude",
+    "antigravity",
+    "chatgpt",
+    "reddit",
+    "instagram",
+    "facebook",
+    "twitter",
+    "massplanner",
+    "followliker"
+  ],
+  "transport": {
+    "type": "http",
+    "url": "https://promote4.me/api/commander/mcp"
+  },
+  "stdio": {
+    "command": "node",
+    "args": ["bin/commander-mcp.js"]
+  }
+}
